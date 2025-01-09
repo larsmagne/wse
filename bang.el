@@ -20,6 +20,64 @@
 
 (require 'cl-lib)
 
+(defvar bang-blogs nil
+  "A list of blogs to collect statistics from.
+This should be a list of names (like \"foo.org\" and not URLs.")
+
+(define-multisession-variable bang--last-ids nil)
+
+(defun bang--poll-blogs ()
+  (let ((blogs bang-blogs)
+	(ids (multisession-value bang--last-ids))
+	(data nil)
+	func)
+    (setq func
+	  (lambda ()
+	    (let* ((blog (pop blogs))
+		   (id (or (cl-getf ids blog #'equal) 0))
+		   (url-request-method "POST")
+		   (url-request-extra-headers
+		    '(("Content-Type" . "application/x-www-form-urlencoded")
+		      ("Charset" . "UTF-8")))
+		   (url-request-data
+		    (mm-url-encode-www-form-urlencoded
+		     `(("form_id" . ,(format "%d" id))
+		       ("password" . ,(auth-info-password
+				       (car
+					(auth-source-search
+					 :max 1
+					 :user "bang"
+					 :host blog
+					 :require '(:user :secret)
+					 :create t))))))))
+	      (url-retrieve
+	       (format "https://%s/wp-content/plugins/bang/data.php" blog)
+	       (lambda (status)
+		 (goto-char (point-min))
+		 (unwind-protect
+		     (and (search-forward "\n\n" nil t)
+			  (not (plist-get status :error))
+			  (push (cons blog (json-parse-buffer)) data))
+		   (kill-buffer (current-buffer))
+		   (if blogs
+		       (funcall func)
+		     (bang--update-data ids data))))))))
+    (funcall func)))      
+
+(defun bang--update-data (ids data)
+  (cl-loop for (blog . elems) in data
+	   do (cl-loop for elem across (gethash "data" elems)
+		       for (id time click page referrer ip user-agent) =
+		       (cl-coerce elem 'list)
+		       unless (bang--bot-p user-agent)
+		       do (bang--insert-data time click page referrer ip)
+		       finally
+		       (setf (cl-getf ids blog #'equal)
+			     (string-to-number id))))
+  (setf (multisession-value bang--last-ids) ids))
+
+(defun bang--bot-p (user-agent)
+  (string-match-p "Googlebot\\|AhrefsBot\\|[Bb]ot/" user-agent))
 
 (provide 'bang)
 
