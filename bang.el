@@ -24,18 +24,18 @@
   "A list of blogs to collect statistics from.
 This should be a list of names (like \"foo.org\" and not URLs.")
 
-(define-multisession-variable bang--last-ids nil)
 (defvar bang--db nil)
 
 (defun bang--poll-blogs ()
   (let ((blogs bang-blogs)
-	(ids (multisession-value bang--last-ids))
 	(data nil)
 	func)
     (setq func
 	  (lambda ()
 	    (let* ((blog (pop blogs))
-		   (id (or (plist-get ids (intern blog)) 0))
+		   (id (or (sqlite-select bang--db "select last_id from blogs where blog = ?"
+					  (list blog))
+			   0))
 		   (url-request-method "POST")
 		   (url-request-extra-headers
 		    '(("Content-Type" . "application/x-www-form-urlencoded")
@@ -62,21 +62,27 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		   (kill-buffer (current-buffer))
 		   (if blogs
 		       (funcall func)
-		     (bang--update-data ids data))))))))
+		     (bang--update-data data))))))))
     (funcall func)))      
 
-(defun bang--update-data (ids data)
+(defun bang--update-data (data)
   (cl-loop for (blog . elems) in data
 	   do (cl-loop for elem across (gethash "data" elems)
 		       for (id time click page referrer ip user-agent) =
 		       (cl-coerce elem 'list)
 		       unless (bang--bot-p user-agent)
-		       do (bang--insert-data time click page referrer ip
-					     user-agent)
-		       finally
-		       (setf (plist-get ids (intern blog))
-			     (string-to-number id))))
-  (setf (multisession-value bang--last-ids) ids))
+		       do
+		       (bang--insert-data blog time click page referrer ip
+					  user-agent)
+		       (bang--update-id blog id))))
+
+(defun bang--update-id (blog id)
+  (if (sqlite-select bang--db "select last_id from blogs where blog = ?"
+		     (list blog))
+      (sqlite-execute bang--db "update blogs set last_id = ? where blog = ?"
+		      (list id blog))
+    (sqlite-execute bang--db "insert into blogs(blog, id) values(?, ?)"
+		    (list blog id))))
 
 (defun bang--bot-p (user-agent)
   (string-match-p "Googlebot\\|AhrefsBot\\|[Bb]ot/" user-agent))
@@ -85,13 +91,41 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (unless bang--db
     (setq bang--db (sqlite-open
 		    (expand-file-name "bang.sqlite" user-emacs-directory)))
-    (sqlite-execute bang--db "create table if not exists stats (id integer primary key, time text, click text, page text, referrer text, ip text, user_agent text)")))
+    (sqlite-execute bang--db "create table if not exists blogs (blog text primary key, last_id integer)")
+    (sqlite-execute bang--db "create table if not exists country_counter (id integer)")
+    (sqlite-execute bang--db "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, country text)")
+    (sqlite-execute bang--db "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
+    (sqlite-execute bang--db "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, page text)")
+    (sqlite-execute bang--db "create table if not exists history (id integer primary key, blog text, date date, views integer, visitors integer, clicks integer, referrers integer)")))
 
-(defun bang--insert-data (time click page referrer ip user-agent)
-  (sqlite-execute
-   bang--db
-   "insert into stats(time, click, page, referrer, ip, user_agent) values(?, ?, ?, ?, ?, ?)"
-   (list time click page referrer ip user-agent)))
+(defun bang--host (url)
+  (url-domain (url-generic-parse-url url)))
+
+(defun bang--insert-data (blog time click page referrer ip user-agent)
+  (if (not (zerop (length click)))
+      ;; Register a click if it's not going to the current blog, or
+    ;; whether it's going to a media URL of some kind (image/mp4/etc).
+    (when (or (not (equal (bang--host click) blog))
+	      (string-match "/wp-contents/uploads/" click)
+	      (string-match "[.]\\(mp4\\|png\\|jpg\\|jpeg\\|webp\\|webp\\)\\'"
+			    click))
+      (sqlite-execute
+       bang--db
+       "insert into clicks(blog, time, click, page) values(?, ?, ?, ?)"
+       (list blog time click page)))
+    ;; Insert into views.
+    (sqlite-execute
+     bang--db
+     "insert into views(blog, date, time, click, page, referrer, ip, user_agent, country) values(?, ?, ?, ?, ?, ?)"
+     (list blog (substring time 0 10) time click page
+	   referrer ip user-agent ""))
+    ;; Check whether to register a referrer.
+    (when (and (not (zerop (length referrer)))
+	       (not (equal (bang--host referrer) blog)))
+      (sqlite-execute
+       bang--db
+       "insert into referrers(blog, time, referrer, page) values(?, ?, ?, ?)"
+       (list blog time referrer page)))))
 
 (provide 'bang)
 
