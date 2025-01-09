@@ -25,6 +25,7 @@
 This should be a list of names (like \"foo.org\" and not URLs.")
 
 (define-multisession-variable bang--last-ids nil)
+(defvar bang--db nil)
 
 (defun bang--poll-blogs ()
   (let ((blogs bang-blogs)
@@ -34,7 +35,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (setq func
 	  (lambda ()
 	    (let* ((blog (pop blogs))
-		   (id (or (cl-getf ids blog #'equal) 0))
+		   (id (or (plist-get ids (intern blog)) 0))
 		   (url-request-method "POST")
 		   (url-request-extra-headers
 		    '(("Content-Type" . "application/x-www-form-urlencoded")
@@ -70,14 +71,27 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		       for (id time click page referrer ip user-agent) =
 		       (cl-coerce elem 'list)
 		       unless (bang--bot-p user-agent)
-		       do (bang--insert-data time click page referrer ip)
+		       do (bang--insert-data time click page referrer ip
+					     user-agent)
 		       finally
-		       (setf (cl-getf ids blog #'equal)
+		       (setf (plist-get ids (intern blog))
 			     (string-to-number id))))
   (setf (multisession-value bang--last-ids) ids))
 
 (defun bang--bot-p (user-agent)
   (string-match-p "Googlebot\\|AhrefsBot\\|[Bb]ot/" user-agent))
+
+(defun bang--initialize ()
+  (unless bang--db
+    (setq bang--db (sqlite-open
+		    (expand-file-name "bang.sqlite" user-emacs-directory)))
+    (sqlite-execute bang--db "create table if not exists stats (id integer primary key, time text, click text, page text, referrer text, ip text, user_agent text)")))
+
+(defun bang--insert-data (time click page referrer ip user-agent)
+  (sqlite-execute
+   bang--db
+   "insert into stats(time, click, page, referrer, ip, user_agent) values(?, ?, ?, ?, ?, ?)"
+   (list time click page referrer ip user-agent)))
 
 (provide 'bang)
 
