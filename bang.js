@@ -33,10 +33,17 @@ document.addEventListener(
     });
 
     // Record that we've loaded the page.
+    var title = jQuery(".entry-title").text();
+    if (!title) {
+      title = document.title;
+      if (title)
+	title = title.replace(/ +\u2013.*$/, "");
+    }
     jQuery.ajax({
       url: "/wp-content/plugins/bang/visit.php?ref=" +
 	encodeURIComponent(document.referrer) +
-	"&page=" + encodeURIComponent(window.location.href),
+	"&page=" + encodeURIComponent(window.location.href) +
+	"&title=" + encodeURIComponent(title),
       dataType: "json",
       success: function(result) {
       }

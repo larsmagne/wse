@@ -15,18 +15,24 @@ $table_name = $wpdb->prefix . 'bang_stats';
 $click = @$_REQUEST["click"];
 $referrer = @$_REQUEST["ref"];
 $page = @$_REQUEST["page"];
+$user_agent = @$_SERVER['HTTP_USER_AGENT'];
+$title = @$_REQUEST["title"];
 
-$wpdb->insert(
-  $table_name,
-  array(
-    'time' => current_time('mysql'),
-    'click' => $click ?? "",
-    'page' => $page ?? "",
-    'referrer' => $referrer ?? "",
-    'ip' => @$_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'],
-    'user_agent' => @$_SERVER['HTTP_USER_AGENT']
-  )
-);
+// Skip Googlebot, AHrefsbot, etc.
+if (! preg_match("#bot/#i", $user_agent)) {
+  $wpdb->insert(
+    $table_name,
+    array(
+      'time' => current_time('mysql'),
+      'click' => $click ?? "",
+      'page' => $page ?? "",
+      'referrer' => $referrer ?? "",
+      'ip' => @$_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'],
+      'user_agent' => $user_agent,
+      'title' => $title
+    )
+  );
+}
 
 $result = array();
 $result["done"] = true;

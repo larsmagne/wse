@@ -29,7 +29,7 @@ $data = array();
 foreach ($results as $result) {
   $data[] = array($result->id, $result->time, $result->click,
                   $result->page, $result->referrer, $result->ip,
-                  $result->user_agent);
+                  $result->user_agent, $result->title);
 }
 
 $output = array();

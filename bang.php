@@ -23,6 +23,7 @@ function bang_create_database_table() {
         referrer text,
         ip text,
         user_agent text,
+        title text,
         primary key (id)
     ) $charset_collate;";
 
@@ -33,7 +34,7 @@ function bang_create_database_table() {
 function bang_delete_table() {
   global $wpdb;
   $table_name = $wpdb->prefix . 'bang_stats';
-  //$wpdb->query("DROP TABLE IF EXISTS $table_name");
+  $wpdb->query("DROP TABLE IF EXISTS $table_name");
 }
 
 register_activation_hook(__FILE__, 'bang_create_database_table');
