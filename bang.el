@@ -33,8 +33,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (setq func
 	  (lambda ()
 	    (let* ((blog (pop blogs))
-		   (id (or (sqlite-select bang--db "select last_id from blogs where blog = ?"
-					  (list blog))
+		   (id (or (caar
+			    (sqlite-select
+			     bang--db "select last_id from blogs where blog = ?"
+			     (list blog)))
 			   0))
 		   (url-request-method "POST")
 		   (url-request-extra-headers
@@ -69,12 +71,12 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (setq d2 data)
   (cl-loop for (blog . elems) in data
 	   do (cl-loop for elem across (gethash "data" elems)
-		       for (id time click page referrer ip user-agent) =
+		       for (id time click page referrer ip user-agent title) =
 		       (cl-coerce elem 'list)
 		       unless (bang--bot-p user-agent)
 		       do
 		       (bang--insert-data blog time click page referrer ip
-					  user-agent page)
+					  user-agent title)
 		       (bang--update-id blog id))))
 
 (defun bang--update-id (blog id)
@@ -114,6 +116,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (string-match "[.]\\(mp4\\|png\\|jpg\\|jpeg\\|webp\\|webp\\)\\'" click))
 
 (defun bang--insert-data (blog time click page referrer ip user-agent title)
+  ;; Titles aren't set for clicks.
+  (when (eq title :null)
+    (setq title ""))
   (when (bang--url-p page)
     (if (bang--url-p click)
 	;; Register a click if it's not going to the current blog, or
@@ -234,7 +239,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        "Total Views"
        (caar (sqlite-select bang--db "select count(*) from clicks where time > ?"
 			    (list time)))
-       "Total Clicks")))))
+       "Total Referrers")))))
 
 (defun bang--now ()
   (bang--time (- (time-convert (current-time) 'integer)
@@ -245,27 +250,37 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (clicks
 	  (sqlite-select
 	   bang--db
-	   "select count(domain), domain, click from clicks where time > ? group by domain order by count(domain) desc limit 10"
+	   "select count(domain), domain, count(distinct click), click from clicks where time > ? group by domain order by count(domain) desc limit 10"
 	   (list time)))
 	 (countries
 	  (sqlite-select
 	   bang--db
 	   "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit 10"
 	   (list time))))
-    (cl-loop for i from 0 upto 9
-	     for click = (elt clicks i)
-	     collect
-	     (append (if click
-			 (list (car click)
-			       (if (= (car click) 1)
-				   (caddr click)
-				 (buttonize
-				  (concat "🔽 " (cadr click))
-				  (lambda (domain)
-				    (bang--view-clicks domain))
-				  (cadr click))))
-		       (list "" ""))
-		     (or (elt countries i) (list "" ""))))))
+    (nconc
+     (cl-loop for i from 0 upto 9
+	      for click = (elt clicks i)
+	      collect
+	      (append (if click
+			  (list (car click)
+				(if (= (nth 2 click) 1)
+				    (nth 3 click)
+				  (buttonize
+				   (concat "🔽 " (cadr click))
+				   (lambda (domain)
+				     (bang--view-clicks domain))
+				   (cadr click))))
+			(list "" ""))
+		      (or (elt countries i) (list "" ""))))
+    
+     (list
+      (list
+       (caar (sqlite-select bang--db "select count(*) from clicks where time > ?"
+			    (list time)))
+       "Total Clicks"
+       (caar (sqlite-select bang--db "select count(distinct country) from views where time > ?"
+			    (list time)))
+       "Total Countries")))))
 
 (defun bang--view-clicks (domain)
   (switch-to-buffer "*Clicks*")
