@@ -94,10 +94,13 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		    (expand-file-name "bang.sqlite" user-emacs-directory)))
     (sqlite-execute bang--db "create table if not exists blogs (blog text primary key, last_id integer)")
     (sqlite-execute bang--db "create table if not exists country_counter (id integer)")
+    (unless (sqlite-select bang--db "select * from country_counter")
+      (sqlite-execute bang--db "insert into country_counter values (0)"))
     (sqlite-execute bang--db "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text)")
     (sqlite-execute bang--db "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
     (sqlite-execute bang--db "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
-    (sqlite-execute bang--db "create table if not exists history (id integer primary key, blog text, date date, views integer, visitors integer, clicks integer, referrers integer)")))
+    (sqlite-execute bang--db "create table if not exists history (id integer primary key, blog text, date date, views integer, visitors integer, clicks integer, referrers integer)")
+    (sqlite-execute bang--db "create table if not exists countries (code text primary key, name text)")))
 
 (defun bang--host (url)
   (url-host (url-generic-parse-url url)))
@@ -301,10 +304,53 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     "Twitter")
    (t
     url)))
-   
 
 (defun bang--time (time)
   (format-time-string "%Y-%m-%d %H:%M:%S" time))
+
+(defun bang--fill-country ()
+  (let ((id (or (caar (sqlite-select bang--db "select id from country_counter"))
+		0))
+	func)
+    (setq func
+	  (lambda ()
+	    (when-let ((next
+			(caar
+			 (sqlite-select
+			  bang--db "select min(id) from views where id > ?"
+			  (list id)))))
+	      (url-retrieve
+	       (format "http://ip-api.com/json/%s"
+		       (caar (sqlite-select bang--db
+					    "select ip from views where id = ?"
+					    (list next))))
+	       (lambda (status)
+		 (goto-char (point-min))
+		 (let ((country-code "-")
+		       (country-name nil))
+		   (when (and (not (plist-get status :error))
+			      (search-forward "\n\n" nil t))
+		     (let ((json (json-parse-buffer)))
+		       (when (equal (gethash "status" json) "success")
+			 (setq country-code (gethash "countryCode" json)
+			       country-name (gethash "country" json)))))
+		   (kill-buffer (current-buffer))
+		   (sqlite-execute bang--db
+				   "update views set country = ? where id = ?"
+				   (list country-code next))
+		   (sqlite-execute bang--db
+				   "update country_counter set id = ?"
+				   (list next))
+		   (when (and country-name
+			      (not (sqlite-select
+				    bang--db "select * from countries where code = ?"
+				    (list country-code))))
+		     (sqlite-execute bang--db "insert into countries(code, name) values (?, ?)"
+				     (list country-code country-name)))
+		   (setq id next)
+		   (run-at-time 2 nil func)))
+	       nil t))))
+    (funcall func)))
 
 (provide 'bang)
 
