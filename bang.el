@@ -19,6 +19,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'eplot)
 
 (defface bang
   '((t :family "Futura"))
@@ -71,6 +72,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		     (bang--update-data data))))))))
     (funcall func)))      
 
+(defvar bang--filling-country nil)
+
 (defun bang--update-data (data)
   (setq d2 data)
   (cl-loop for (blog . elems) in data
@@ -82,7 +85,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		       (bang--insert-data blog time click page referrer ip
 					  user-agent title)
 		       (bang--update-id blog id)))
-  (bang--fill-country))
+  (unless bang--filling-country
+    (bang--fill-country)))
 
 (defun bang--update-id (blog id)
   (if (sqlite-select bang--db "select last_id from blogs where blog = ?"
@@ -170,10 +174,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (make-vtable
      :face 'bang
      :use-header-line nil
-     :columns '((:name "" :align 'right)
-		(:name "Posts & Pages" :width 50)
-		(:name "" :align 'right)
-		(:name "Referrers" :width 50))
+     :columns '((:name "" :align 'right :min-width "70px")
+		(:name "Posts & Pages" :width "600px")
+		(:name "" :align 'right :min-width "70px")
+		(:name "Referrers" :width 45))
      :objects (bang--get-page-table-data)
      :getter
      (lambda (elem column vtable)
@@ -187,10 +191,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (make-vtable
      :face 'bang
      :use-header-line nil
-     :columns '((:name "" :align 'right)
-		(:name "Clicks" :width 50)
-		(:name "" :align 'right)
-		(:name "Countries" :width 50))
+     :columns '((:name "" :align 'right :min-width "70px")
+		(:name "Clicks" :width "600px")
+		(:name "" :align 'right :min-width "70px")
+		(:name "Countries" :width 45))
      :objects (bang--get-click-table-data)
      :getter
      (lambda (elem column vtable)
@@ -205,6 +209,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (goto-char (point-min))
     (insert "\n")
     (goto-char (point-min))
+    (bang--plot-history)
     (bang--plot-blogs-today)
     (insert "\n")
     ))
@@ -440,49 +445,51 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (format-time-string "%Y-%m-%d %H:%M:%S" time))
 
 (defun bang--fill-country ()
+  (setq bang--filling-country t)
   (let ((id (or (caar (sqlite-select bang--db "select id from country_counter"))
 		0))
 	func)
     (setq func
 	  (lambda ()
-	    (when-let ((next
-			(caar
+	    (let ((next (caar
 			 (sqlite-select
 			  bang--db "select min(id) from views where id > ?"
 			  (list id)))))
-	      (url-retrieve
-	       (format "http://ip-api.com/json/%s"
-		       (caar (sqlite-select bang--db
-					    "select ip from views where id = ?"
-					    (list next))))
-	       (lambda (status)
-		 (goto-char (point-min))
-		 (let ((country-code "-")
-		       (country-name nil))
-		   (when (and (not (plist-get status :error))
-			      (search-forward "\n\n" nil t))
-		     (let ((json (json-parse-buffer)))
-		       (when (equal (gethash "status" json) "success")
-			 (setq country-code (gethash "countryCode" json)
-			       country-name (gethash "country" json)))))
-		   (kill-buffer (current-buffer))
-		   (sqlite-execute bang--db
-				   "update views set country = ? where id = ?"
-				   (list country-code next))
-		   (sqlite-execute bang--db
-				   "update country_counter set id = ?"
-				   (list next))
-		   (when (and country-name
-			      (not (sqlite-select
-				    bang--db "select * from countries where code = ?"
-				    (list country-code))))
-		     (sqlite-execute bang--db "insert into countries(code, name) values (?, ?)"
-				     (list country-code country-name)))
-		   (setq id next)
-		   ;; The API is rate limited at 45 per minute, so
-		   ;; poll max 30 times per minute.
-		   (run-at-time 2 nil func)))
-	       nil t))))
+	      (if (not next)
+		  (setq bang--filling-country nil)
+		(url-retrieve
+		 (format "http://ip-api.com/json/%s"
+			 (caar (sqlite-select bang--db
+					      "select ip from views where id = ?"
+					      (list next))))
+		 (lambda (status)
+		   (goto-char (point-min))
+		   (let ((country-code "-")
+			 (country-name nil))
+		     (when (and (not (plist-get status :error))
+				(search-forward "\n\n" nil t))
+		       (let ((json (json-parse-buffer)))
+			 (when (equal (gethash "status" json) "success")
+			   (setq country-code (gethash "countryCode" json)
+				 country-name (gethash "country" json)))))
+		     (kill-buffer (current-buffer))
+		     (sqlite-execute bang--db
+				     "update views set country = ? where id = ?"
+				     (list country-code next))
+		     (sqlite-execute bang--db
+				     "update country_counter set id = ?"
+				     (list next))
+		     (when (and country-name
+				(not (sqlite-select
+				      bang--db "select * from countries where code = ?"
+				      (list country-code))))
+		       (sqlite-execute bang--db "insert into countries(code, name) values (?, ?)"
+				       (list country-code country-name)))
+		     (setq id next)
+		     ;; The API is rate limited at 45 per minute, so
+		     ;; poll max 30 times per minute.
+		     (run-at-time 2 nil func))))
+		nil t))))
     (funcall func)))
 
 (defun bang--plot-blogs-today ()
@@ -505,6 +512,43 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		 collect (list views "# Label: " blog))))
    "*"))
 
+(defun bang--summarise-history ()
+  (dolist (blog bang-blogs)
+    (cl-loop with max-date = (caar (sqlite-select bang--db "select date from views where blog = ? order by id desc limit 1"
+						  (list blog)))
+	     for (date views visitors) in
+	     (sqlite-select bang--db "select date, count(date), count(distinct ip) from views where date < ? and blog = ? group by date order by date"
+			    (list max-date blog))
+	     unless (sqlite-select bang--db "select date from history where blog = ? and date = ?"
+				   (list blog date))
+	     do (sqlite-execute
+		 bang--db "insert into history(blog, date, views, visitors, clicks, referrers) values (?, ?, ?, ?, ?, ?)"
+		 (list blog date views visitors
+		       (caar (sqlite-select
+			      bang--db "select count(*) from clicks where blog = ? and time between ? and ?"
+			      (list blog (concat date " 00:00:00")
+				    (concat date " 23:59:59"))))
+		       (caar (sqlite-select
+			      bang--db "select count(*) from referrers where blog = ? and time between ? and ?"
+			      (list blog (concat date " 00:00:00")
+				    (concat date " 23:59:59")))))))))
+
+(defun bang--plot-history ()
+  (insert-image
+   (svg-image
+    (eplot-make-plot
+     '((Color "#008000")
+       (Mode dark)
+       (Layout compact)
+       (Font Futura)
+       (Height 300)
+       (Width 500)
+       (Format bar-chart))
+     (cl-loop for (date views visitors) in
+	      (sqlite-select bang--db "select date, sum(views), sum(visitors) from history group by date order by date limit 14")
+	      collect (list views "# Label: " (substring date 8)))))
+   "*"))
+
 (provide 'bang)
 
 ;;; bang.el ends here
@@ -514,5 +558,3 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Make chart
 ;;  Add visitors to summary
 ;; Summarise history per day
-;; Inhibit running geo fetch twice at the same time
-;; Use Futura
