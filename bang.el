@@ -66,7 +66,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (funcall func)))      
 
 (defun bang--update-data (data)
-  (setq d data)
+  (setq d2 data)
   (cl-loop for (blog . elems) in data
 	   do (cl-loop for elem across (gethash "data" elems)
 		       for (id time click page referrer ip user-agent) =
@@ -96,15 +96,19 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (sqlite-execute bang--db "create table if not exists country_counter (id integer)")
     (sqlite-execute bang--db "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text)")
     (sqlite-execute bang--db "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
-    (sqlite-execute bang--db "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, page text)")
+    (sqlite-execute bang--db "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
     (sqlite-execute bang--db "create table if not exists history (id integer primary key, blog text, date date, views integer, visitors integer, clicks integer, referrers integer)")))
 
 (defun bang--host (url)
   (url-host (url-generic-parse-url url)))
 
 (defun bang--url-p (string)
-  (and (not (zerop (length string)))
+  (and (and (stringp string))
+       (not (zerop (length string)))
        (string-match-p "\\`[a-z]+:" string)))
+
+(defun bang--media-p (click)
+  (string-match "[.]\\(mp4\\|png\\|jpg\\|jpeg\\|webp\\|webp\\)\\'" click))
 
 (defun bang--insert-data (blog time click page referrer ip user-agent title)
   (when (bang--url-p page)
@@ -113,12 +117,11 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	;; whether it's going to a media URL of some kind (image/mp4/etc).
 	(when (or (not (equal (bang--host click) blog))
 		  (string-match "/wp-contents/uploads/" click)
-		  (string-match "[.]\\(mp4\\|png\\|jpg\\|jpeg\\|webp\\|webp\\)\\'"
-				click))
+		  (bang--media-p click))
 	  (sqlite-execute
 	   bang--db
-	   "insert into clicks(blog, time, click, page) values(?, ?, ?, ?)"
-	   (list blog time click page)))
+	   "insert into clicks(blog, time, click, domain, page) values(?, ?, ?, ?, ?)"
+	   (list blog time click (bang--host click) page)))
       ;; Insert into views.
       (sqlite-execute
        bang--db
@@ -153,6 +156,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (let ((inhibit-read-only t))
     (erase-buffer)
     (make-vtable
+     :use-header-line nil
      :columns '((:name "Number Of Pages" :align 'right)
 		(:name "Posts & Pages" :width 35)
 		(:name "Number Of Referrers" :align 'right)
@@ -168,6 +172,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (goto-char (point-max))
     (insert "\n")
     (make-vtable
+     :use-header-line nil
      :columns '((:name "Number Of Clicks" :align 'right)
 		(:name "Clicks" :width 35)
 		(:name "Number Of Countries" :align 'right)
@@ -184,7 +189,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (if (bang--url-p string)
       (buttonize string (lambda (_)
 			  (let ((browse-url-browser-function
-				 browse-url-secondary-browser-function))
+				 (if (bang--media-p string)
+				     browse-url-browser-function
+				   browse-url-secondary-browser-function)))
 			    (browse-url string))))
     string))
 
@@ -202,18 +209,30 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	    bang--db
 	    "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
 	    (list time)))))
-    (cl-loop for i from 0 upto 9
-	     collect
-	     (append (or (elt pages i) (list nil nil))
-		     (or (elt referrers i) (list nil nil))))))
+    (nconc
+     (cl-loop for i from 0 upto 9
+	      collect
+	      (append (or (elt pages i) (list nil nil))
+		      (or (elt referrers i) (list nil nil))))
+     (list
+      (list
+       (caar (sqlite-select bang--db "select count(*) from views where time > ?"
+			    (list time)))
+       "Total Views"
+       (caar (sqlite-select bang--db "select count(*) from clicks where time > ?"
+			    (list time)))
+       "Total Clicks")))))
+
+(defun bang--now ()
+  (bang--time (- (time-convert (current-time) 'integer)
+		 (* 60 60 24))))
 
 (defun bang--get-click-table-data ()
-  (let* ((time (bang--time (- (time-convert (current-time) 'integer)
-			      (* 60 60 24))))
+  (let* ((time (bang--now))
 	 (clicks
 	  (sqlite-select
 	   bang--db
-	   "select count(click), click from clicks where time > ? group by click order by count(click) desc limit 10"
+	   "select count(domain), domain, click from clicks where time > ? group by domain order by count(domain) desc limit 10"
 	   (list time)))
 	 (countries
 	  (sqlite-select
@@ -221,9 +240,39 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	   "select count(country), country from views where time > ? group by country order by count(country) desc limit 10"
 	   (list time))))
     (cl-loop for i from 0 upto 9
+	     for click = (elt clicks i)
 	     collect
-	     (append (or (elt clicks i) (list "" ""))
+	     (append (if click
+			 (list (car click)
+			       (if (= (car click) 1)
+				   (caddr click)
+				 (buttonize
+				  (concat "🔽 " (cadr click))
+				  (lambda (domain)
+				    (bang--view-clicks domain))
+				  (cadr click))))
+		       (list "" ""))
 		     (or (elt countries i) (list "" ""))))))
+
+(defun bang--view-clicks (domain)
+  (switch-to-buffer "*Clicks*")
+  (special-mode)
+  (let ((inhibit-read-only t))
+    (setq truncate-lines t)
+    (erase-buffer)
+    (make-vtable
+     :columns '((:name "Number Of Clicks" :align 'right)
+		(:name "Clicks"))
+     :objects (sqlite-select
+	       bang--db
+	       "select count(click), click from clicks where time > ? and domain = ? group by click order by count(click) desc"
+	       (list (bang--now) domain))
+     :getter
+     (lambda (elem column vtable)
+       (if (equal (vtable-column vtable column) "Clicks")
+	   (bang--possibly-buttonize (elt elem column))
+	 (elt elem column)))
+     :keymap button-map)))
 
 (defun bang--transform-referrers (referrers)
   (let ((table (make-hash-table :test #'equal)))
