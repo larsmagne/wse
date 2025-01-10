@@ -44,7 +44,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		      ("Charset" . "UTF-8")))
 		   (url-request-data
 		    (mm-url-encode-www-form-urlencoded
-		     `(("form_id" . ,(format "%d" id))
+		     `(("from_id" . ,(format "%d" id))
 		       ("password" . ,(auth-info-password
 				       (car
 					(auth-source-search
@@ -77,7 +77,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		       do
 		       (bang--insert-data blog time click page referrer ip
 					  user-agent title)
-		       (bang--update-id blog id))))
+		       (bang--update-id blog id)))
+  (bang--fill-country))
 
 (defun bang--update-id (blog id)
   (if (sqlite-select bang--db "select last_id from blogs where blog = ?"
@@ -205,12 +206,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang--possibly-buttonize (string)
   (if (bang--url-p string)
-      (buttonize string (lambda (_)
-			  (let ((browse-url-browser-function
-				 (if (bang--media-p string)
-				     browse-url-browser-function
-				   browse-url-secondary-browser-function)))
-			    (browse-url string))))
+      (buttonize string #'bang--browse string)
     string))
 
 (defun bang--get-page-table-data ()
@@ -236,10 +232,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
       (list
        (caar (sqlite-select bang--db "select count(*) from views where time > ?"
 			    (list time)))
-       "Total Views"
-       (caar (sqlite-select bang--db "select count(*) from clicks where time > ?"
+       (buttonize "Total Views" #'bang--view-total-views)
+       (caar (sqlite-select bang--db "select count(*) from referrers where time > ?"
 			    (list time)))
-       "Total Referrers")))))
+       (buttonize "Total Referrers" #'bang--view-total-referrers))))))
 
 (defun bang--now ()
   (bang--time (- (time-convert (current-time) 'integer)
@@ -298,6 +294,54 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Clicks")
+	   (bang--possibly-buttonize (elt elem column))
+	 (elt elem column)))
+     :keymap button-map)))
+
+(defun bang--view-total-views (_)
+  (switch-to-buffer "*Total Views*")
+  (special-mode)
+  (let ((inhibit-read-only t))
+    (setq truncate-lines t)
+    (erase-buffer)
+    (make-vtable
+     :columns '((:name "Number Of Views" :align 'right)
+		(:name "Posts & Pages"))
+     :objects (sqlite-select
+	       bang--db
+	       "select count(page), title, page from views where time > ? group by page order by count(page) desc, id"
+	       (list (bang--now)))
+     :getter
+     (lambda (elem column vtable)
+       (if (equal (vtable-column vtable column) "Posts & Pages")
+	   (buttonize (elt elem column) #'bang--browse (elt elem 2))
+	 (elt elem column)))
+     :keymap button-map)))
+
+(defun bang--browse (url)
+  (let ((browse-url-browser-function
+	 (if (bang--media-p url)
+	     browse-url-browser-function
+	   browse-url-secondary-browser-function)))
+    (browse-url url)))
+
+(defun bang--view-total-referrers (_)
+  (switch-to-buffer "*Total Referrers*")
+  (special-mode)
+  (let ((inhibit-read-only t))
+    (setq truncate-lines t)
+    (erase-buffer)
+    (make-vtable
+     :columns '((:name "Number" :align 'right)
+		(:name "Referrers"))
+     :objects (bang--transform-referrers
+	       (sqlite-select
+		bang--db
+		"select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
+		(list (bang--now))))
+     :getter
+     (lambda (elem column vtable)
+       (if (equal (vtable-column vtable column) "Referrers")
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
      :keymap button-map)))
@@ -373,6 +417,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		     (sqlite-execute bang--db "insert into countries(code, name) values (?, ?)"
 				     (list country-code country-name)))
 		   (setq id next)
+		   ;; The API is rate limited at 45 per minute, so
+		   ;; poll max 30 times per minute.
 		   (run-at-time 2 nil func)))
 	       nil t))))
     (funcall func)))
@@ -380,3 +426,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (provide 'bang)
 
 ;;; bang.el ends here
+
+;; Todo: Group referrers by domain
+;; Make chart
+;; Summarise history per day
+;; Inhibit running geo fetch twice at the same time
+;; View total clicks.
