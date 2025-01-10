@@ -492,24 +492,32 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (funcall func)))
 
 (defun bang--plot-blogs-today ()
-  (insert-image
-   (svg-image
-    (eplot-make-plot
-     '((Format horizontal-bar-chart)
-       (Color vary)
-       (Mode dark)
-       (Layout compact)
-       (Font Futura)
-       (Margin-Left 10)
-       (Horizontal-Label-Left 20)
-       (Horizontal-Label-Font-Size 18)
-       (Height 300)
-       (Width 250))
-     (cl-loop for (blog views visitors) in
-		 (sqlite-select bang--db "select blog, count(blog), count(distinct ip) from views where time > ? group by blog order by blog"
-				(list (bang--now)))
-		 collect (list views "# Label: " blog))))
-   "*"))
+  (let ((data 
+	 (sqlite-select bang--db "select blog, count(blog), count(distinct ip) from views where time > ? group by blog order by blog"
+			(list (bang--now)))))
+    (insert-image
+     (svg-image
+      (eplot-make-plot
+       '((Format horizontal-bar-chart)
+	 (Color vary)
+	 (Mode dark)
+	 (Layout compact)
+	 (Font Futura)
+	 (Margin-Left 10)
+	 (Horizontal-Label-Left 20)
+	 (Horizontal-Label-Font-Size 18)
+	 (Height 300)
+	 (Width 250))
+       (append
+	'((Bar-Max-Width: 40))
+	(cl-loop for (blog views _visitors) in data
+		 collect (list views "# Label: " blog)))
+       (append
+	'((Bar-Max-Width: 20)
+	  (Color: "#004000"))
+	(cl-loop for (blog _views visitors) in data
+		 collect (list visitors "# Label: " blog)))))
+     "*")))
 
 (defun bang--summarise-history ()
   (dolist (blog bang-blogs)
@@ -565,6 +573,4 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 ;; Todo:
 ;; Group referrers by domain
-;; Make chart
-;;  Add visitors to summary
 ;; Summarise history per day
