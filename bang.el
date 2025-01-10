@@ -193,16 +193,18 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	((equal (vtable-column vtable column) "Clicks")
 	 (bang--possibly-buttonize (elt elem column)))
 	((equal (vtable-column vtable column) "Countries")
-	 (let ((code (elt elem 4)))
-	   (if (= (length code) 2)
-	       (concat (string (+ #x1F1E6 (- (elt code 0) ?A)))
-		       (string (+ #x1F1E6 (- (elt code 1) ?A)))
-		       " "
-		       (elt elem column))
-	     (elt elem column))))
+	 (bang--countrify (elt elem 4) (elt elem column)))
 	(t
 	 (elt elem column))))
      :keymap bang-mode-map)))
+
+(defun bang--countrify (code name)
+  (if (= (length code) 2)
+      (concat (string (+ #x1F1E6 (- (elt code 0) ?A)))
+	      (string (+ #x1F1E6 (- (elt code 1) ?A)))
+	      " "
+	      name)
+    name))
 
 (defun bang--possibly-buttonize (string)
   (if (bang--url-p string)
@@ -273,10 +275,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
       (list
        (caar (sqlite-select bang--db "select count(*) from clicks where time > ?"
 			    (list time)))
-       "Total Clicks"
+       (buttonize "Total Clicks" #'bang--view-total-clicks)
        (caar (sqlite-select bang--db "select count(distinct country) from views where time > ?"
 			    (list time)))
-       "Total Countries")))))
+       (buttonize "Total Countries" #'bang--view-total-countries))))))
 
 (defun bang--view-clicks (domain)
   (switch-to-buffer "*Clicks*")
@@ -299,7 +301,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :keymap button-map)))
 
 (defun bang--view-total-views (_)
-  (switch-to-buffer "*Total Views*")
+  (switch-to-buffer "*Total Bang*")
   (special-mode)
   (let ((inhibit-read-only t))
     (setq truncate-lines t)
@@ -326,7 +328,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (browse-url url)))
 
 (defun bang--view-total-referrers (_)
-  (switch-to-buffer "*Total Referrers*")
+  (switch-to-buffer "*Total Bang*")
   (special-mode)
   (let ((inhibit-read-only t))
     (setq truncate-lines t)
@@ -343,6 +345,46 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Referrers")
 	   (bang--possibly-buttonize (elt elem column))
+	 (elt elem column)))
+     :keymap button-map)))
+
+(defun bang--view-total-clicks (_)
+  (switch-to-buffer "*Total Bang*")
+  (special-mode)
+  (let ((inhibit-read-only t))
+    (setq truncate-lines t)
+    (erase-buffer)
+    (make-vtable
+     :columns '((:name "Number" :align 'right)
+		(:name "Clicks"))
+     :objects (sqlite-select
+	       bang--db
+	       "select count(distinct click), click from clicks where time > ? group by click order by count(click) desc"
+	       (list (bang--now)))
+     :getter
+     (lambda (elem column vtable)
+       (if (equal (vtable-column vtable column) "Clicks")
+	   (bang--possibly-buttonize (elt elem column))
+	 (elt elem column)))
+     :keymap button-map)))
+
+(defun bang--view-total-countries (_)
+  (switch-to-buffer "*Total Bang*")
+  (special-mode)
+  (let ((inhibit-read-only t))
+    (setq truncate-lines t)
+    (erase-buffer)
+    (make-vtable
+     :columns '((:name "Number" :align 'right)
+		(:name "Countries"))
+     :objects (sqlite-select
+	       bang--db
+	       "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc"
+	       (list (bang--now)))
+     :getter
+     (lambda (elem column vtable)
+       (if (equal (vtable-column vtable column) "Countries")
+	   (bang--countrify (elt elem 2) (elt elem column))
 	 (elt elem column)))
      :keymap button-map)))
 
@@ -431,4 +473,3 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Make chart
 ;; Summarise history per day
 ;; Inhibit running geo fetch twice at the same time
-;; View total clicks.
