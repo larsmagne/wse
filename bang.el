@@ -488,8 +488,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		     (setq id next)
 		     ;; The API is rate limited at 45 per minute, so
 		     ;; poll max 30 times per minute.
-		     (run-at-time 2 nil func))))
-		nil t))))
+		     (run-at-time 2 nil func)))
+		 nil t)))))
     (funcall func)))
 
 (defun bang--plot-blogs-today ()
@@ -534,20 +534,27 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 				    (concat date " 23:59:59")))))))))
 
 (defun bang--plot-history ()
-  (insert-image
-   (svg-image
-    (eplot-make-plot
-     '((Color "#008000")
-       (Mode dark)
-       (Layout compact)
-       (Font Futura)
-       (Height 300)
-       (Width 500)
-       (Format bar-chart))
-     (cl-loop for (date views visitors) in
-	      (sqlite-select bang--db "select date, sum(views), sum(visitors) from history group by date order by date limit 14")
-	      collect (list views "# Label: " (substring date 8)))))
-   "*"))
+  (let ((data (sqlite-select bang--db "select date, sum(views), sum(visitors) from history group by date order by date limit 14")))
+    (insert-image
+     (svg-image
+      (eplot-make-plot
+       '((Mode dark)
+	 (Layout compact)
+	 (Font Futura)
+	 (Height 300)
+	 (Width 500)
+	 (Format bar-chart))
+       (append
+	'((Bar-Max-Width: 20)
+	  (Color: "#004000"))
+	(cl-loop for (date _views visitors) in data
+		 collect (list visitors "# Label: " (substring date 8))))
+       (append
+	'((Bar-Max-Width: 40)
+	  (Color: "#008000"))
+	(cl-loop for (date views _visitors) in data
+		 collect (list views "# Label: " (substring date 8))))))
+     "*")))
 
 (provide 'bang)
 
