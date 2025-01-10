@@ -185,8 +185,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :objects (bang--get-page-table-data)
      :getter
      (lambda (elem column vtable)
-       (if (member (vtable-column vtable column)
-		   '("Posts & Pages" "Referrers"))
+       (if (equal (vtable-column vtable column) "Referrers")
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
      :keymap bang-mode-map)
@@ -220,10 +219,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang--countrify (code name)
   (if (= (length code) 2)
-      (concat (string (+ #x1F1E6 (- (elt code 0) ?A)))
-	      (string (+ #x1F1E6 (- (elt code 1) ?A)))
-	      " "
-	      name)
+      ;; Convert the country code into a Unicode flag.
+      (concat (string (+ #x1f1a5 (elt code 0)) (+ #x1f1a5 (elt code 1)))
+	      " " name)
     name))
 
 (defun bang--pretty-url (string)
@@ -239,7 +237,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (pages
 	  (sqlite-select
 	   bang--db
-	   "select count(page), title from views where time > ? group by page order by count(page) desc limit 10"
+	   "select count(page), title, page from views where time > ? group by page order by count(page) desc limit 10"
 	   (list time)))
 	 (referrers
 	  (bang--transform-referrers
@@ -249,8 +247,17 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	    (list time)))))
     (nconc
      (cl-loop for i from 0 upto 9
+	      for page = (elt pages i)
 	      collect
-	      (append (or (elt pages i) (list nil nil))
+	      (append (if page
+			  (list (nth 0 page)
+				(buttonize
+				 (if (bang--url-p (nth 1 page))
+				     (bang--pretty-url (nth 1 page))
+				   (nth 1 page))
+				 #'bang--browse (elt page 2)
+				 (elt page 2)))
+			(list nil nil))
 		      (or (elt referrers i) (list nil nil))))
      (list
       (list
