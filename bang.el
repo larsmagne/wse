@@ -20,6 +20,10 @@
 
 (require 'cl-lib)
 
+(defface bang
+  '((t :family "Futura"))
+  "The face to use in bang buffers.")
+
 (defvar bang-blogs nil
   "A list of blogs to collect statistics from.
 This should be a list of names (like \"foo.org\" and not URLs.")
@@ -149,8 +153,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (setq truncate-lines t))
 
 (defvar-keymap bang-mode-map
-  "RET" #'push-button
-  "<mouse-2>" #'push-button
+  :parent button-map
   "g" #'bang-revert)
 
 (defun bang-revert ()
@@ -165,11 +168,12 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (let ((inhibit-read-only t))
     (erase-buffer)
     (make-vtable
+     :face 'bang
      :use-header-line nil
-     :columns '((:name "Number Of Pages" :align 'right)
-		(:name "Posts & Pages" :width 35)
-		(:name "Number Of Referrers" :align 'right)
-		(:name "Referrers" :width 35))
+     :columns '((:name "" :align 'right)
+		(:name "Posts & Pages" :width 50)
+		(:name "" :align 'right)
+		(:name "Referrers" :width 50))
      :objects (bang--get-page-table-data)
      :getter
      (lambda (elem column vtable)
@@ -177,15 +181,16 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		   '("Posts & Pages" "Referrers"))
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
-     :keymap bang-mode-map)
+     :keymap button-map)
     (goto-char (point-max))
     (insert "\n")
     (make-vtable
+     :face 'bang
      :use-header-line nil
-     :columns '((:name "Number Of Clicks" :align 'right)
-		(:name "Clicks" :width 35)
-		(:name "Number Of Countries" :align 'right)
-		(:name "Countries" :width 35))
+     :columns '((:name "" :align 'right)
+		(:name "Clicks" :width 50)
+		(:name "" :align 'right)
+		(:name "Countries" :width 50))
      :objects (bang--get-click-table-data)
      :getter
      (lambda (elem column vtable)
@@ -196,7 +201,13 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (bang--countrify (elt elem 4) (elt elem column)))
 	(t
 	 (elt elem column))))
-     :keymap bang-mode-map)))
+     :keymap button-map)
+    (goto-char (point-min))
+    (insert "\n")
+    (goto-char (point-min))
+    (bang--plot-blogs-today)
+    (insert "\n")
+    ))
 
 (defun bang--countrify (code name)
   (if (= (length code) 2)
@@ -206,9 +217,12 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	      name)
     name))
 
+(defun bang--pretty-url (string)
+  (replace-regexp-in-string "\\`[a-z]+://" "" string))
+
 (defun bang--possibly-buttonize (string)
   (if (bang--url-p string)
-      (buttonize string #'bang--browse string)
+      (buttonize (bang--pretty-url string) #'bang--browse string string)
     string))
 
 (defun bang--get-page-table-data ()
@@ -287,7 +301,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (setq truncate-lines t)
     (erase-buffer)
     (make-vtable
-     :columns '((:name "Number Of Clicks" :align 'right)
+     :face 'bang
+     :columns '((:name "" :align 'right)
 		(:name "Clicks"))
      :objects (sqlite-select
 	       bang--db
@@ -307,7 +322,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (setq truncate-lines t)
     (erase-buffer)
     (make-vtable
-     :columns '((:name "Number Of Views" :align 'right)
+     :face 'bang
+     :columns '((:name "" :align 'right)
 		(:name "Posts & Pages"))
      :objects (sqlite-select
 	       bang--db
@@ -316,7 +332,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Posts & Pages")
-	   (buttonize (elt elem column) #'bang--browse (elt elem 2))
+	   (buttonize (bang--pretty-url (elt elem column))
+		      #'bang--browse (elt elem 2) (elt elem 2))
 	 (elt elem column)))
      :keymap button-map)))
 
@@ -334,7 +351,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (setq truncate-lines t)
     (erase-buffer)
     (make-vtable
-     :columns '((:name "Number" :align 'right)
+     :face 'bang
+     :columns '((:name "" :align 'right)
 		(:name "Referrers"))
      :objects (bang--transform-referrers
 	       (sqlite-select
@@ -355,7 +373,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (setq truncate-lines t)
     (erase-buffer)
     (make-vtable
-     :columns '((:name "Number" :align 'right)
+     :face 'bang
+     :columns '((:name "" :align 'right)
 		(:name "Clicks"))
      :objects (sqlite-select
 	       bang--db
@@ -375,7 +394,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (setq truncate-lines t)
     (erase-buffer)
     (make-vtable
-     :columns '((:name "Number" :align 'right)
+     :face 'bang
+     :columns '((:name "" :align 'right)
 		(:name "Countries"))
      :objects (sqlite-select
 	       bang--db
@@ -465,11 +485,34 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	       nil t))))
     (funcall func)))
 
+(defun bang--plot-blogs-today ()
+  (insert-image
+   (svg-image
+    (eplot-make-plot
+     '((Format horizontal-bar-chart)
+       (Color vary)
+       (Mode dark)
+       (Layout compact)
+       (Font Futura)
+       (Margin-Left 10)
+       (Horizontal-Label-Left 20)
+       (Horizontal-Label-Font-Size 20)
+       (Height 300)
+       (Width 300))
+     (cl-loop for (blog views visitors) in
+		 (sqlite-select bang--db "select blog, count(blog), count(distinct ip) from views where time > ? group by blog order by blog"
+				(list (bang--now)))
+		 collect (list views "# Label: " blog))))
+   "*"))
+
 (provide 'bang)
 
 ;;; bang.el ends here
 
-;; Todo: Group referrers by domain
+;; Todo:
+;; Group referrers by domain
 ;; Make chart
+;;  Add visitors to summary
 ;; Summarise history per day
 ;; Inhibit running geo fetch twice at the same time
+;; Use Futura
