@@ -31,7 +31,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defvar bang--db nil)
 
-(defun bang--poll-blogs ()
+(defun bang--poll-blogs (&optional callback)
   (let ((blogs bang-blogs)
 	(data nil)
 	func)
@@ -69,12 +69,12 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		   (kill-buffer (current-buffer))
 		   (if blogs
 		       (funcall func)
-		     (bang--update-data data))))))))
+		     (bang--update-data data callback))))))))
     (funcall func)))      
 
 (defvar bang--filling-country nil)
 
-(defun bang--update-data (data)
+(defun bang--update-data (data &optional callback)
   (setq d2 data)
   (cl-loop for (blog . elems) in data
 	   do (cl-loop for elem across (gethash "data" elems)
@@ -86,7 +86,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 					  user-agent title)
 		       (bang--update-id blog id)))
   (unless bang--filling-country
-    (bang--fill-country)))
+    (bang--fill-country))
+  (when callback
+    (funcall callback)))
 
 (defun bang--update-id (blog id)
   (if (sqlite-select bang--db "select last_id from blogs where blog = ?"
@@ -162,7 +164,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang-revert ()
   "Update the current buffer."
-  (interactive))
+  (interactive)
+  (message "Updating...")
+  (bang--poll-blogs #'bang))
 
 (defun bang ()
   "Display Wordpress statistics."
@@ -185,7 +189,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		   '("Posts & Pages" "Referrers"))
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
-     :keymap button-map)
+     :keymap bang-mode-map)
     (goto-char (point-max))
     (insert "\n")
     (make-vtable
@@ -205,7 +209,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (bang--countrify (elt elem 4) (elt elem column)))
 	(t
 	 (elt elem column))))
-     :keymap button-map)
+     :keymap bang-mode-map)
     (goto-char (point-min))
     (insert "\n")
     (goto-char (point-min))
@@ -317,7 +321,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (if (equal (vtable-column vtable column) "Clicks")
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
-     :keymap button-map)))
+     :keymap bang-mode-map)))
 
 (defun bang--view-total-views (_)
   (switch-to-buffer "*Total Bang*")
@@ -339,7 +343,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	   (buttonize (bang--pretty-url (elt elem column))
 		      #'bang--browse (elt elem 2) (elt elem 2))
 	 (elt elem column)))
-     :keymap button-map)))
+     :keymap bang-mode-map)))
 
 (defun bang--browse (url)
   (let ((browse-url-browser-function
@@ -368,7 +372,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (if (equal (vtable-column vtable column) "Referrers")
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
-     :keymap button-map)))
+     :keymap bang-mode-map)))
 
 (defun bang--view-total-clicks (_)
   (switch-to-buffer "*Total Bang*")
@@ -389,7 +393,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (if (equal (vtable-column vtable column) "Clicks")
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
-     :keymap button-map)))
+     :keymap bang-mode-map)))
 
 (defun bang--view-total-countries (_)
   (switch-to-buffer "*Total Bang*")
@@ -410,7 +414,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (if (equal (vtable-column vtable column) "Countries")
 	   (bang--countrify (elt elem 2) (elt elem column))
 	 (elt elem column)))
-     :keymap button-map)))
+     :keymap bang-mode-map)))
 
 (defun bang--transform-referrers (referrers)
   (let ((table (make-hash-table :test #'equal)))
@@ -574,3 +578,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Todo:
 ;; Group referrers by domain
 ;; Summarise history per day
+;; Instrument mp4
+;; Instrument lyte
+;; Allow choosing a historic date
+;; Don't record own clicks
