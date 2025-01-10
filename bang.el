@@ -231,8 +231,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     string))
 
 (defun bang--get-page-table-data ()
-  (let* ((time (bang--time (- (time-convert (current-time) 'integer)
-			      (* 60 60 24))))
+  (let* ((time (bang--now))
 	 (pages
 	  (sqlite-select
 	   bang--db
@@ -503,9 +502,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (Font Futura)
        (Margin-Left 10)
        (Horizontal-Label-Left 20)
-       (Horizontal-Label-Font-Size 20)
+       (Horizontal-Label-Font-Size 18)
        (Height 300)
-       (Width 300))
+       (Width 250))
      (cl-loop for (blog views visitors) in
 		 (sqlite-select bang--db "select blog, count(blog), count(distinct ip) from views where time > ? group by blog order by blog"
 				(list (bang--now)))
@@ -534,7 +533,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 				    (concat date " 23:59:59")))))))))
 
 (defun bang--plot-history ()
-  (let ((data (sqlite-select bang--db "select date, sum(views), sum(visitors) from history group by date order by date limit 14")))
+  (let ((data (sqlite-select bang--db "select date, sum(views), sum(visitors) from history group by date order by date limit 14"))
+	(today (car (sqlite-select bang--db "select count(*), count(distinct ip) from views where time > ?"
+				   (list (bang--now))))))
     (insert-image
      (svg-image
       (eplot-make-plot
@@ -542,18 +543,20 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (Layout compact)
 	 (Font Futura)
 	 (Height 300)
-	 (Width 500)
+	 (Width 550)
 	 (Format bar-chart))
        (append
 	'((Bar-Max-Width: 20)
 	  (Color: "#004000"))
 	(cl-loop for (date _views visitors) in data
-		 collect (list visitors "# Label: " (substring date 8))))
+		 collect (list visitors "# Label: " (substring date 8)))
+	(list (list (cadr today) "# Label: today")))
        (append
 	'((Bar-Max-Width: 40)
 	  (Color: "#008000"))
 	(cl-loop for (date views _visitors) in data
-		 collect (list views "# Label: " (substring date 8))))))
+		 collect (list views "# Label: " (substring date 8)))
+	(list (list (car today) "# Label: today")))))
      "*")))
 
 (provide 'bang)
