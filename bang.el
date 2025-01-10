@@ -183,9 +183,19 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :objects (bang--get-click-table-data)
      :getter
      (lambda (elem column vtable)
-       (if (equal (vtable-column vtable column) "Clicks")
-	   (bang--possibly-buttonize (elt elem column))
-	 (elt elem column)))
+       (cond
+	((equal (vtable-column vtable column) "Clicks")
+	 (bang--possibly-buttonize (elt elem column)))
+	((equal (vtable-column vtable column) "Countries")
+	 (let ((code (elt elem 4)))
+	   (if (= (length code) 2)
+	       (concat (string (+ #x1F1E6 (- (elt code 0) ?A)))
+		       (string (+ #x1F1E6 (- (elt code 1) ?A)))
+		       " "
+		       (elt elem column))
+	     (elt elem column))))
+	(t
+	 (elt elem column))))
      :keymap bang-mode-map)))
 
 (defun bang--possibly-buttonize (string)
@@ -240,7 +250,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (countries
 	  (sqlite-select
 	   bang--db
-	   "select count(country), country from views where time > ? group by country order by count(country) desc limit 10"
+	   "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit 10"
 	   (list time))))
     (cl-loop for i from 0 upto 9
 	     for click = (elt clicks i)
