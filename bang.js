@@ -1,8 +1,6 @@
 document.addEventListener(
   "DOMContentLoaded",
   function() {
-    console.log("here");
-    
     // Instrument all links so that we can see what the user clicked.
     jQuery("a").each(function() {
       var link = this.getAttribute("href");
@@ -33,8 +31,11 @@ document.addEventListener(
     });
 
     // Record that we've loaded the page.
-    var title = jQuery(".entry-title").text();
-    if (!title) {
+    var title;
+    var $title = jQuery(".entry-title");
+    if ($title.length == 1)
+      title = $title.text();
+    else {
       title = document.title;
       if (title)
 	title = title.replace(/ +\u2013.*$/, "");
