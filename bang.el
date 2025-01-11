@@ -542,7 +542,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun bang--plot-history ()
   (let ((data (bang-sel "select date, sum(views), sum(visitors) from history group by date order by date limit 14"))
 	(today (car (bang-sel "select count(*), count(distinct ip) from views where time > ?"
-			      (bang--now)))))
+			      (bang--now))))
+	(current (car (bang-sel "select count(*), count(distinct ip) from views where time > ?"
+				(format-time-string "%Y-%m-%d 00:00:00")))))
     (insert-image
      (svg-image
       (eplot-make-plot
@@ -557,13 +559,15 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	  (Color: "#004000"))
 	(cl-loop for (date _views visitors) in data
 		 collect (list visitors "# Label: " (substring date 8)))
-	(list (list (cadr today) "# Label: today")))
+	(list (list (cadr current) "# Label: " (format-time-string "%d")))
+	(list (list (cadr today) "# Label: 24h")))
        (append
 	'((Bar-Max-Width: 40)
 	  (Color: "#008000"))
 	(cl-loop for (date views _visitors) in data
 		 collect (list views "# Label: " (substring date 8)))
-	(list (list (car today) "# Label: today")))))
+	(list (list (car current) "# Label: " (format-time-string "%d")))
+	(list (list (car today) "# Label: 24h")))))
      "*")))
 
 (provide 'bang)
@@ -582,4 +586,3 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; bang.js is collecting too many titles, and wrong title for main page?
 ;; Display update time in *Bang*
 ;; Command to open today's media links
-;; Also display today's hits so far
