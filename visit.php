@@ -18,6 +18,20 @@ $page = @$_REQUEST["page"];
 $user_agent = @$_SERVER['HTTP_USER_AGENT'];
 $title = @$_REQUEST["title"];
 
+$result = array();
+$result["done"] = true;
+
+// Don't count logged-in users.
+foreach ($_COOKIE as $key=>$val) {
+  // Disabled while developing.
+  if (false &&
+      preg_match("/^wordpress_logged_in_/", $key) &&
+      $val != "") {
+    echo json_encode($result);
+    exit;
+  }
+}
+
 // Skip Googlebot, AHrefsbot, etc.
 if (! preg_match("#bot/#i", $user_agent)) {
   $wpdb->insert(
@@ -34,6 +48,4 @@ if (! preg_match("#bot/#i", $user_agent)) {
   );
 }
 
-$result = array();
-$result["done"] = true;
 echo json_encode($result);

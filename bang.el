@@ -795,5 +795,4 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;;; bang.el ends here
 
 ;; Todo:
-;; Don't record own clicks
 ;; Figure out time zones.
