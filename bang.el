@@ -75,7 +75,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defvar bang--filling-country nil)
 
 (defun bang--update-data (data &optional callback)
-  (setq d2 data)
   (cl-loop for (blog . elems) in data
 	   do (cl-loop for elem across (gethash "data" elems)
 		       for (id time click page referrer ip user-agent title) =
@@ -276,9 +275,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun bang ()
   "Display Wordpress statistics."
   (interactive)
-  (if (get-buffer-window "*Bang*")
-      (pop-to-buffer "*Bang*")
-    (switch-to-buffer-other-frame "*Bang*"))
+  (switch-to-buffer "*Bang*")
+  (bang--initialize)
   (bang-mode)
   (let ((inhibit-read-only t))
     (erase-buffer)
