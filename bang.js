@@ -79,7 +79,7 @@ document.addEventListener(
     // so fall back on the document title instead.
     if ($title.length == 1)
       title = $title.text();
-    else {
+    if (!title) {
       title = document.title;
       if (title)
 	title = title.replace(/ +\u2013.*$/, "");
