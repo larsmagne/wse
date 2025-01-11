@@ -258,8 +258,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 				   (nth 1 page))
 				 #'bang--browse (elt page 2)
 				 (elt page 2)))
-			(list nil nil))
-		      (or (elt referrers i) (list nil nil))))
+			(list "" ""))
+		      (or (elt referrers i) (list "" ""))))
      (list
       (list
        (caar (sqlite-select bang--db "select count(*) from views where time > ?"
@@ -456,6 +456,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     "Amp")
    ((equal (bang--host url) "t.co")
     "Twitter")
+   ((and summarize (member (bang--host url) bang-blogs))
+    "Interblog")
    (t
     url)))
 
