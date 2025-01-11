@@ -30,6 +30,31 @@ document.addEventListener(
       });
     });
 
+    // Instrument <video> elements.
+    jQuery("video").each(function() {
+      var link;
+      var $source = jQuery(this).find("source");
+      if ($source.length == 1) {
+	link = $source.attr("src");
+	jQuery(this).on("playing", function() {
+	  var link;
+	  var $source = jQuery(this).find("source");
+	  if ($source.length == 1) {
+	    link = $source.attr("src");
+	    jQuery.ajax({
+	      url: "/wp-content/plugins/bang/visit.php?click=" +
+		encodeURIComponent(link) +
+		"&page=" + encodeURIComponent(window.location.href),
+	      dataType: "json",
+	      success: function(result) {
+	      }
+	    });
+	  }
+	  return true;
+	});
+      }
+    });
+    
     // Record that we've loaded the page.
     var title;
     var $title = jQuery(".entry-title");

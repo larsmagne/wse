@@ -712,7 +712,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 ;; Todo:
 ;; Group referrers by domain
-;; Instrument mp4
 ;; Instrument lyte
 ;; Don't record own clicks
 ;; Output comments from data.php
