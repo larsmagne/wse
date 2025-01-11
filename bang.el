@@ -39,9 +39,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	  (lambda ()
 	    (let* ((blog (pop blogs))
 		   (id (or (caar
-			    (sqlite-select
-			     bang--db "select last_id from blogs where blog = ?"
-			     (list blog)))
+			    (bang-sel "select last_id from blogs where blog = ?"
+				      blog))
 			   0))
 		   (url-request-method "POST")
 		   (url-request-extra-headers
@@ -92,12 +91,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (funcall callback)))
 
 (defun bang--update-id (blog id)
-  (if (sqlite-select bang--db "select last_id from blogs where blog = ?"
-		     (list blog))
-      (sqlite-execute bang--db "update blogs set last_id = ? where blog = ?"
-		      (list id blog))
-    (sqlite-execute bang--db "insert into blogs(blog, last_id) values(?, ?)"
-		    (list blog id))))
+  (if (bang-sel "select last_id from blogs where blog = ?" blog)
+      (bang-exec "update blogs set last_id = ? where blog = ?" id blog)
+    (bang-exec "insert into blogs(blog, last_id) values(?, ?)" blog id)))
 
 (defun bang--bot-p (user-agent)
   (string-match-p "Googlebot\\|AhrefsBot\\|[Bb]ot/" user-agent))
@@ -106,15 +102,15 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (unless bang--db
     (setq bang--db (sqlite-open
 		    (expand-file-name "bang.sqlite" user-emacs-directory)))
-    (sqlite-execute bang--db "create table if not exists blogs (blog text primary key, last_id integer)")
-    (sqlite-execute bang--db "create table if not exists country_counter (id integer)")
-    (unless (sqlite-select bang--db "select * from country_counter")
-      (sqlite-execute bang--db "insert into country_counter values (0)"))
-    (sqlite-execute bang--db "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text)")
-    (sqlite-execute bang--db "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
-    (sqlite-execute bang--db "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
-    (sqlite-execute bang--db "create table if not exists history (id integer primary key, blog text, date date, views integer, visitors integer, clicks integer, referrers integer)")
-    (sqlite-execute bang--db "create table if not exists countries (code text primary key, name text)")))
+    (bang-exec "create table if not exists blogs (blog text primary key, last_id integer)")
+    (bang-exec "create table if not exists country_counter (id integer)")
+    (unless (bang-sel "select * from country_counter")
+      (bang-exec "insert into country_counter values (0)"))
+    (bang-exec "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text)")
+    (bang-exec "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
+    (bang-exec "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
+    (bang-exec "create table if not exists history (id integer primary key, blog text, date date, views integer, visitors integer, clicks integer, referrers integer)")
+    (bang-exec "create table if not exists countries (code text primary key, name text)")))
 
 (defun bang--host (url)
   (url-host (url-generic-parse-url url)))
@@ -138,22 +134,19 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	(when (or (not (equal (bang--host click) blog))
 		  (string-match "/wp-contents/uploads/" click)
 		  (bang--media-p click))
-	  (sqlite-execute
-	   bang--db
+	  (bang-exec
 	   "insert into clicks(blog, time, click, domain, page) values(?, ?, ?, ?, ?)"
-	   (list blog time click (bang--host click) page)))
+	   blog time click (bang--host click) page))
       ;; Insert into views.
-      (sqlite-execute
-       bang--db
+      (bang-exec
        "insert into views(blog, date, time, page, ip, user_agent, title, country) values(?, ?, ?, ?, ?, ?, ?, ?)"
-       (list blog (substring time 0 10) time page ip user-agent title ""))
+       blog (substring time 0 10) time page ip user-agent title "")
       ;; Check whether to register a referrer.
       (when (and (bang--url-p referrer)
 		 (not (equal (bang--host referrer) blog)))
-	(sqlite-execute
-	 bang--db
+	(bang-exec
 	 "insert into referrers(blog, time, referrer, page) values(?, ?, ?, ?)"
-	 (list blog time referrer page))))))
+	 blog time referrer page)))))
 
 (define-derived-mode bang-mode special-mode "Bang"
   "Major mode for listing Wordpress statistics."
@@ -172,7 +165,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun bang ()
   "Display Wordpress statistics."
   (interactive)
-  (switch-to-buffer-other-frame "*Bang*")
+  (if (get-buffer-window "*Bang*")
+      (pop-to-buffer "*Bang*")
+    (switch-to-buffer-other-frame "*Bang*"))
   (bang-mode)
   (let ((inhibit-read-only t))
     (erase-buffer)
@@ -236,16 +231,12 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun bang--get-page-table-data ()
   (let* ((time (bang--now))
 	 (pages
-	  (sqlite-select
-	   bang--db
-	   "select count(page), title, page from views where time > ? group by page order by count(page) desc limit 10"
-	   (list time)))
+	  (bang-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit 10"
+		    time))
 	 (referrers
 	  (bang--transform-referrers
-	   (sqlite-select
-	    bang--db
-	    "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
-	    (list time))
+	   (bang-sel "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
+		     time)
 	   t)))
     (nconc
      (cl-loop for i from 0 upto 9
@@ -263,11 +254,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		      (or (elt referrers i) (list "" ""))))
      (list
       (list
-       (caar (sqlite-select bang--db "select count(*) from views where time > ?"
-			    (list time)))
+       (caar (bang-sel "select count(*) from views where time > ?" time))
        (buttonize "Total Views" #'bang--view-total-views)
-       (caar (sqlite-select bang--db "select count(*) from referrers where time > ?"
-			    (list time)))
+       (caar (bang-sel "select count(*) from referrers where time > ?" time))
        (buttonize "Total Referrers" #'bang--view-total-referrers))))))
 
 (defun bang--now ()
@@ -277,15 +266,11 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun bang--get-click-table-data ()
   (let* ((time (bang--now))
 	 (clicks
-	  (sqlite-select
-	   bang--db
-	   "select count(domain), domain, count(distinct click), click from clicks where time > ? group by domain order by count(domain) desc limit 10"
-	   (list time)))
+	  (bang-sel "select count(domain), domain, count(distinct click), click from clicks where time > ? group by domain order by count(domain) desc limit 10"
+		    time))
 	 (countries
-	  (sqlite-select
-	   bang--db
-	   "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit 10"
-	   (list time))))
+	  (bang-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit 10"
+		    time)))
     (nconc
      (cl-loop for i from 0 upto 9
 	      for click = (elt clicks i)
@@ -304,11 +289,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     
      (list
       (list
-       (caar (sqlite-select bang--db "select count(*) from clicks where time > ?"
-			    (list time)))
+       (caar (bang-sel "select count(*) from clicks where time > ?" time))
        (buttonize "Total Clicks" #'bang--view-total-clicks)
-       (caar (sqlite-select bang--db "select count(distinct country) from views where time > ?"
-			    (list time)))
+       (caar (bang-sel "select count(distinct country) from views where time > ?"
+		       time))
        (buttonize "Total Countries" #'bang--view-total-countries))))))
 
 (defun bang--view-clicks (domain)
@@ -321,10 +305,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :face 'bang
      :columns '((:name "" :align 'right)
 		(:name "Clicks"))
-     :objects (sqlite-select
-	       bang--db
-	       "select count(click), click from clicks where time > ? and domain = ? group by click order by count(click) desc"
-	       (list (bang--now) domain))
+     :objects (bang-sel "select count(click), click from clicks where time > ? and domain = ? group by click order by count(click) desc"
+			(bang--now) domain)
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Clicks")
@@ -342,10 +324,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :face 'bang
      :columns '((:name "" :align 'right)
 		(:name "Posts & Pages"))
-     :objects (sqlite-select
-	       bang--db
-	       "select count(page), title, page from views where time > ? group by page order by count(page) desc, id"
-	       (list (bang--now)))
+     :objects (bang-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc, id"
+			(bang--now))
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Posts & Pages")
@@ -372,10 +352,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :columns '((:name "" :align 'right)
 		(:name "Referrers"))
      :objects (bang--transform-referrers
-	       (sqlite-select
-		bang--db
-		"select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
-		(list (bang--now))))
+	       (bang-sel "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
+			 (bang--now)))
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Referrers")
@@ -393,10 +371,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :face 'bang
      :columns '((:name "" :align 'right)
 		(:name "Clicks"))
-     :objects (sqlite-select
-	       bang--db
-	       "select count(distinct click), click from clicks where time > ? group by click order by count(click) desc"
-	       (list (bang--now)))
+     :objects (bang-sel "select count(distinct click), click from clicks where time > ? group by click order by count(click) desc"
+			(bang--now))
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Clicks")
@@ -414,10 +390,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :face 'bang
      :columns '((:name "" :align 'right)
 		(:name "Countries"))
-     :objects (sqlite-select
-	       bang--db
-	       "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc"
-	       (list (bang--now)))
+     :objects (bang-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc"
+			(bang--now))
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Countries")
@@ -462,27 +436,31 @@ This should be a list of names (like \"foo.org\" and not URLs.")
    (t
     url)))
 
+(defun bang-sel (statement &rest args)
+  (sqlite-select bang--db statement args))
+
+(defun bang-exec (statement &rest args)
+  (sqlite-execute bang--db statement args))
+
 (defun bang--time (time)
   (format-time-string "%Y-%m-%d %H:%M:%S" time))
 
 (defun bang--fill-country ()
   (setq bang--filling-country t)
-  (let ((id (or (caar (sqlite-select bang--db "select id from country_counter"))
+  (let ((id (or (caar (bang-sel "select id from country_counter"))
 		0))
 	func)
     (setq func
 	  (lambda ()
-	    (let ((next (caar
-			 (sqlite-select
-			  bang--db "select min(id) from views where id > ?"
-			  (list id)))))
+	    (let ((next
+		   (caar (bang-sel "select min(id) from views where id > ?"
+				   id))))
 	      (if (not next)
 		  (setq bang--filling-country nil)
 		(url-retrieve
 		 (format "http://ip-api.com/json/%s"
-			 (caar (sqlite-select bang--db
-					      "select ip from views where id = ?"
-					      (list next))))
+			 (caar (bang-sel "select ip from views where id = ?"
+					 next)))
 		 (lambda (status)
 		   (goto-char (point-min))
 		   (let ((country-code "-")
@@ -494,18 +472,14 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 			   (setq country-code (gethash "countryCode" json)
 				 country-name (gethash "country" json)))))
 		     (kill-buffer (current-buffer))
-		     (sqlite-execute bang--db
-				     "update views set country = ? where id = ?"
-				     (list country-code next))
-		     (sqlite-execute bang--db
-				     "update country_counter set id = ?"
-				     (list next))
+		     (bang-exec "update views set country = ? where id = ?"
+				country-code next)
+		     (bang-exec "update country_counter set id = ?" next)
 		     (when (and country-name
-				(not (sqlite-select
-				      bang--db "select * from countries where code = ?"
-				      (list country-code))))
-		       (sqlite-execute bang--db "insert into countries(code, name) values (?, ?)"
-				       (list country-code country-name)))
+				(not (bang-sel "select * from countries where code = ?"
+					       country-code)))
+		       (bang-exec "insert into countries(code, name) values (?, ?)"
+				  country-code country-name))
 		     (setq id next)
 		     ;; The API is rate limited at 45 per minute, so
 		     ;; poll max 30 times per minute.
@@ -515,8 +489,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang--plot-blogs-today ()
   (let ((data 
-	 (sqlite-select bang--db "select blog, count(blog), count(distinct ip) from views where time > ? group by blog order by blog"
-			(list (bang--now)))))
+	 (bang-sel "select blog, count(blog), count(distinct ip) from views where time > ? group by blog order by blog"
+		   (bang--now))))
     (insert-image
      (svg-image
       (eplot-make-plot
@@ -542,36 +516,33 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      "*")))
 
 (defun bang--possibly-summarize-history ()
-  (let ((max (caar (sqlite-select bang--db "select max(date) from history"))))
+  (let ((max (caar (bang-sel "select max(date) from history"))))
     (when (or (not max)
 	      (string< max (substring (bang--now) 0 10)))
       (bang--summarize-history))))
 
 (defun bang--summarize-history ()
   (dolist (blog bang-blogs)
-    (cl-loop with max-date = (caar (sqlite-select bang--db "select date from views where blog = ? order by id desc limit 1"
-						  (list blog)))
+    (cl-loop with max-date = (caar (bang-sel "select date from views where blog = ? order by id desc limit 1"
+					     blog))
 	     for (date views visitors) in
-	     (sqlite-select bang--db "select date, count(date), count(distinct ip) from views where date < ? and blog = ? group by date order by date"
-			    (list max-date blog))
-	     unless (sqlite-select bang--db "select date from history where blog = ? and date = ?"
-				   (list blog date))
-	     do (sqlite-execute
-		 bang--db "insert into history(blog, date, views, visitors, clicks, referrers) values (?, ?, ?, ?, ?, ?)"
-		 (list blog date views visitors
-		       (caar (sqlite-select
-			      bang--db "select count(*) from clicks where blog = ? and time between ? and ?"
-			      (list blog (concat date " 00:00:00")
-				    (concat date " 23:59:59"))))
-		       (caar (sqlite-select
-			      bang--db "select count(*) from referrers where blog = ? and time between ? and ?"
-			      (list blog (concat date " 00:00:00")
-				    (concat date " 23:59:59")))))))))
+	     (bang-sel "select date, count(date), count(distinct ip) from views where date < ? and blog = ? group by date order by date"
+		       max-date blog)
+	     unless (bang-sel "select date from history where blog = ? and date = ?"
+			      blog date)
+	     do (bang-exec "insert into history(blog, date, views, visitors, clicks, referrers) values (?, ?, ?, ?, ?, ?)"
+			   blog date views visitors
+			   (caar (bang-sel "select count(*) from clicks where blog = ? and time between ? and ?"
+					   blog (concat date " 00:00:00")
+					   (concat date " 23:59:59")))
+			   (caar (bang-sel "select count(*) from referrers where blog = ? and time between ? and ?"
+					   blog (concat date " 00:00:00")
+					   (concat date " 23:59:59")))))))
 
 (defun bang--plot-history ()
-  (let ((data (sqlite-select bang--db "select date, sum(views), sum(visitors) from history group by date order by date limit 14"))
-	(today (car (sqlite-select bang--db "select count(*), count(distinct ip) from views where time > ?"
-				   (list (bang--now))))))
+  (let ((data (bang-sel "select date, sum(views), sum(visitors) from history group by date order by date limit 14"))
+	(today (car (bang-sel "select count(*), count(distinct ip) from views where time > ?"
+			      (bang--now)))))
     (insert-image
      (svg-image
       (eplot-make-plot
