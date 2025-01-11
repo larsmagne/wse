@@ -155,7 +155,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defvar-keymap bang-mode-map
   :parent button-map
   "g" #'bang-revert
-  "d" #'bang-view-date)
+  "d" #'bang-view-date
+  "v" #'bang-view-details)
 
 (defun bang-revert ()
   "Update the current buffer."
@@ -182,6 +183,57 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (insert "\n")
     (bang--view-total-countries nil date)
     (goto-char (point-min))))
+
+(defun bang-view-details ()
+  "View details of the URL under point."
+  (interactive)
+  (cond
+   ((eq (vtable-current-column) 1)
+    (bang--view-page-details
+     (get-text-property
+      1 'help-echo
+      (elt (vtable-current-object) (vtable-current-column)))))
+   ((eq (vtable-current-column) 3)
+    (bang--view-referrer-details
+     (elt (vtable-current-object) (vtable-current-column))))))
+
+(defun bang--view-page-details (url)
+  (switch-to-buffer "*Bang Details*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (make-vtable
+     :face 'bang
+     :columns '((:name "Time")
+		(:name "IP" :max-width 20)
+		(:name "Country")
+		(:name "User-Agent"))
+     :objects (bang-sel "select time, ip, country, user_agent from views where time > ? and page = ? order by time"
+			(bang--now) url)
+     :getter
+     (lambda (elem column _vtable)
+       (elt elem column))
+     :keymap bang-mode-map)))
+
+(defun bang--view-referrer-details (url)
+  (switch-to-buffer "*Bang Details*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (make-vtable
+     :face 'bang
+     :columns '((:name "Time")
+		(:name "Page"))
+     :objects (bang-sel "select time, page from referrers where time > ? and referrer = ? order by time"
+			(bang--now) url)
+     :getter
+     (lambda (elem column vtable)
+       (if (equal (vtable-column vtable column) "Page")
+	   (bang--possibly-buttonize (elt elem column))
+	 (elt elem column)))
+     :keymap bang-mode-map)))
 
 (defun bang ()
   "Display Wordpress statistics."
@@ -663,8 +715,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Instrument mp4
 ;; Instrument lyte
 ;; Don't record own clicks
-;; Command to see mode data about viewers of post
-;; Command to see where Referrers went
 ;; Output comments from data.php
 ;; bang.js is collecting too many titles, and wrong title for main page?
 ;; Display update time in *Bang*
