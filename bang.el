@@ -104,19 +104,28 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (unless bang--db
     (setq bang--db (sqlite-open
 		    (expand-file-name "bang.sqlite" user-emacs-directory)))
-    ;; Statistics.
+
+    ;; Keeping track of ids per blog.
     (bang-exec "create table if not exists blogs (blog text primary key, last_id integer)")
-    (bang-exec "create table if not exists country_counter (id integer)")
-    (unless (bang-sel "select * from country_counter")
-      (bang-exec "insert into country_counter values (0)"))
+
+    ;; Statistics.
     (bang-exec "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text)")
     (bang-exec "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
     (bang-exec "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
+
+    ;; History.
     (bang-exec "create table if not exists history (id integer primary key, blog text, date date, views integer, visitors integer, clicks integer, referrers integer)")
+    (bang-exec "create unique index if not exists historyidx1 on history(blog, date)")
+
+    ;; Countries.
+    (bang-exec "create table if not exists country_counter (id integer)")
+    (unless (bang-sel "select * from country_counter")
+      (bang-exec "insert into country_counter values (0)"))
     (bang-exec "create table if not exists countries (code text primary key, name text)")
 
     ;; Comments.
-    (bang-exec "create table if not exists comments (blog text, id integer, post_id integer, time datetime, author text, email text, url text, content text, status text)")))
+    (bang-exec "create table if not exists comments (blog text, id integer, post_id integer, time datetime, author text, email text, url text, content text, status text)")
+    (bang-exec "create unique index if not exists commentsidx1 on comments(blog, id)")))
 
 (defun bang--host (url)
   (url-host (url-generic-parse-url url)))
@@ -771,4 +780,3 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Don't record own clicks
 ;; Display update time in *Bang*
 ;; Figure out time zones.
-;; Add some indices here and there,
