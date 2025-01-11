@@ -71,9 +71,12 @@ document.addEventListener(
       }
     });
     
-    // Record that we've loaded the page.
+    // Record that we've loaded the page.  Get the title from the
+    // entry title, but fall back on the document title.
     var title;
     var $title = jQuery(".entry-title");
+    // If we have more than one hit, we're probably on the front page,
+    // so fall back on the document title instead.
     if ($title.length == 1)
       title = $title.text();
     else {

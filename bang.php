@@ -10,6 +10,7 @@ function add_bang_js() {
 
 add_action("wp_enqueue_scripts", "add_bang_js");
 
+// Function run when the plugin is activated.
 function bang_create_database_table() {
   global $wpdb;
   $table_name = $wpdb->prefix . 'bang_stats';
@@ -31,6 +32,7 @@ function bang_create_database_table() {
   dbDelta($sql);
 }
 
+// Function run when the plugin is deactivated.
 function bang_delete_table() {
   global $wpdb;
   $table_name = $wpdb->prefix . 'bang_stats';

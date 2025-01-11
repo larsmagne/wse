@@ -9,6 +9,7 @@ $wp->send_headers();
 header("Content-type: application/json; charset=utf-8");
 header("Cache-Control: no-cache, no-store, must-revalidate");
 
+// Check that the password is correct.
 require_once(dirname(__FILE__) . '/password.php');
 $password = @$_REQUEST["password"];
 if ($password != bang_password())
@@ -22,6 +23,7 @@ if (! $from_id)
   $from_id = 0;
 $from_id = sprintf("%d", $from_id);
 
+// Select new stats data.
 $sql = $wpdb->prepare("SELECT * FROM $table_name WHERE id > %d ORDER BY id",
                       $from_id);
 $results = $wpdb->get_results($sql);
@@ -40,6 +42,7 @@ $wpdb->query("delete from $table_name where time < '$old'");
 $output = array();
 $output["data"] = $data;
 
+// Also include comments in the data.
 $comment_table = $wpdb->prefix . 'comments';
 $cutoff = date("Y-m-d H:i:s", time() - 7*24*60*60);
 $results = $wpdb->get_results("select comment_id, comment_post_id, comment_author, comment_author_email, comment_author_url, comment_date_gmt, comment_content, comment_approved from $comment_table where comment_date > '$cutoff' and comment_approved <> 'spam'");
