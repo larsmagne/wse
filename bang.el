@@ -392,9 +392,13 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	      (append (if page
 			  (list (nth 0 page)
 				(buttonize
-				 (if (bang--url-p (nth 1 page))
-				     (bang--pretty-url (nth 1 page))
-				   (nth 1 page))
+				 (cond
+				  ((bang--url-p (nth 1 page))
+				   (bang--pretty-url (nth 1 page)))
+				  ((zerop (length (nth 1 page)))
+				   (bang--pretty-url (nth 2 page)))
+				  (t
+				   (nth 1 page)))
 				 #'bang--browse (elt page 2)
 				 (elt page 2)))
 			(list "" ""))
@@ -796,3 +800,4 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 ;; Todo:
 ;; Figure out time zones.
+;; Add a 🔽 for same-domain Referrers with different URLs.
