@@ -156,9 +156,14 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang--store-comments (blog comments)
   (cl-loop for comment across comments
-	   unless (bang-sel "select id from comments where id = ? and blog = ?"
+	   if (bang-sel "select id from comments where id = ? and blog = ?"
 			    (gethash "comment_id" comment)
 			    blog)
+	   do (bang-exec "update comments set status = ? where blog = ? and id = ?"
+			 (gethash "comment_approved" comment)
+			 blog
+			 (gethash "comment_id" comment))
+	   else
 	   do (bang-exec "insert into comments(blog, id, post_id, time, author, email, url, content, status) values(?, ?, ?, ?, ?, ?, ?, ?, ?)"
 			 blog
 			 (gethash "comment_id" comment)
