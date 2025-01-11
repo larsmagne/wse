@@ -54,6 +54,23 @@ document.addEventListener(
 	});
       }
     });
+
+    // Instrument Lyte video elements.
+    jQuery(".lyte-wrapper > div[itemprop='video']").click(function() {
+      console.log(this.id);
+      if (this.id) {
+	var link = "https://www.youtube.com/watch?v=" +
+	    this.id.replace(/^WYL_/, "");
+	jQuery.ajax({
+	  url: "/wp-content/plugins/bang/visit.php?click=" +
+	    encodeURIComponent(link) +
+	    "&page=" + encodeURIComponent(window.location.href),
+	  dataType: "json",
+	  success: function(result) {
+	  }
+	});
+      }
+    });
     
     // Record that we've loaded the page.
     var title;
