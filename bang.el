@@ -310,7 +310,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
      :columns '((:name "Blog" :max-width 20)
 		(:name "Status")
 		(:name "Author")
-		(:name "Comment"))
+		(:name "Comment" :max-width 60))
      :objects (bang-sel "select blog, status, author, content, post_id from comments where time > ? order by time desc"
 			(bang--time (- (time-convert (current-time) 'integer)
 				       (* 4 60 60 24))))
