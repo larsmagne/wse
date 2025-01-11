@@ -87,6 +87,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		       (bang--update-id blog id)))
   (unless bang--filling-country
     (bang--fill-country))
+  (bang--possibly-summarize-history)
   (when callback
     (funcall callback)))
 
@@ -171,7 +172,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun bang ()
   "Display Wordpress statistics."
   (interactive)
-  (pop-to-buffer "*Bang*")
+  (switch-to-buffer-other-frame "*Bang*")
   (bang-mode)
   (let ((inhibit-read-only t))
     (erase-buffer)
@@ -540,7 +541,13 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		 collect (list visitors "# Label: " blog)))))
      "*")))
 
-(defun bang--summarise-history ()
+(defun bang--possibly-summarize-history ()
+  (let ((max (caar (sqlite-select bang--db "select max(date) from history"))))
+    (when (or (not max)
+	      (string< max (substring (bang--now) 0 10)))
+      (bang--summarize-history))))
+
+(defun bang--summarize-history ()
   (dolist (blog bang-blogs)
     (cl-loop with max-date = (caar (sqlite-select bang--db "select date from views where blog = ? order by id desc limit 1"
 						  (list blog)))
@@ -594,7 +601,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 ;; Todo:
 ;; Group referrers by domain
-;; Summarise history per day
 ;; Instrument mp4
 ;; Instrument lyte
 ;; Allow choosing a historic date
@@ -605,3 +611,4 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; bang.js is collecting too many titles, and wrong title for main page?
 ;; Display update time in *Bang*
 ;; Command to open today's media links
+;; Also display today's hits so far
