@@ -244,7 +244,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	   (sqlite-select
 	    bang--db
 	    "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
-	    (list time)))))
+	    (list time))
+	   t)))
     (nconc
      (cl-loop for i from 0 upto 9
 	      for page = (elt pages i)
@@ -423,10 +424,11 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (elt elem column)))
      :keymap bang-mode-map)))
 
-(defun bang--transform-referrers (referrers)
+(defun bang--transform-referrers (referrers &optional summarize)
   (let ((table (make-hash-table :test #'equal)))
     (cl-loop for (count url) in referrers
-	     do (cl-incf (gethash (bang--transform-referrer url) table 0)
+	     do (cl-incf (gethash (bang--transform-referrer url summarize)
+				  table 0)
 			 count))
     (let ((result nil))
       (maphash (lambda (referrer count)
@@ -434,18 +436,24 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	       table)
       (seq-take (nreverse (sort result #'car-less-than-car)) 10))))
 
-(defun bang--transform-referrer (url)
+(defun bang--transform-referrer (url &optional summarize)
   (cond
    ((string-match-p "[.]bing[.][a-z]+/\\'" url)
-    "Bing")
-   ((string-match-p "[.]google[.][a-z]+/\\'" url)
-    "Google")
+    (if summarize "Search" "Bing"))
+   ((string-match-p "[.]google[.][.a-z]+[/]?\\'" url)
+    (if summarize "Search" "Google"))
    ((string-match-p "[.]reddit[.]com/\\'" url)
-    "Reddit")
+    (if summarize "Search" "Reddit"))
+   ((string-match-p "search[.]brave[.]com/\\'" url)
+    (if summarize "Search" "Brave"))
    ((string-match-p "\\bduckduckgo[.]com/\\'" url)
-    "DuckDuckGo")
+    (if summarize "Search" "DuckDuckGo"))
    ((string-match-p "\\byandex[.]ru/\\'" url)
-    "Yandex")
+    (if summarize "Search" "Yandex"))
+   ((and summarize (string-match-p "\\byandex[.]ru/" url))
+    "Search")
+   ((and summarize (string-match-p "\\ampproject[.]org/" url))
+    "Amp")
    ((equal (bang--host url) "t.co")
     "Twitter")
    (t
@@ -589,3 +597,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Instrument lyte
 ;; Allow choosing a historic date
 ;; Don't record own clicks
+;; Command to see mode data about viewers of post
+;; Command to see where Referrers went
+;; Output comments from data.php
+;; Spread eplot bars totally evenly
+;; bang.js is collecting too many titles, and wrong title for main page?
+;; Display update time in *Bang*
+;; Command to open today's media links
