@@ -602,7 +602,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Command to see mode data about viewers of post
 ;; Command to see where Referrers went
 ;; Output comments from data.php
-;; Spread eplot bars totally evenly
 ;; bang.js is collecting too many titles, and wrong title for main page?
 ;; Display update time in *Bang*
 ;; Command to open today's media links
