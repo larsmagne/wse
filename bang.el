@@ -806,4 +806,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 ;; Todo:
 ;; Figure out time zones.
+;;   Log everything in GMT?
 ;; Add a 🔽 for same-domain Referrers with different URLs.
+;; Fix `v' on other tables.
