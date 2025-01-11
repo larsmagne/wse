@@ -344,6 +344,15 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (elt elem column))))
      :keymap bang-mode-map)
 
+    (goto-char (point-max))
+    (insert "\n")
+    (make-vtable
+     :face 'bang
+     :use-header-line nil
+     :columns '((:name "Last Update"))
+     :objects (list (message-make-date))
+     :keymap bang-mode-map)
+
     (goto-char (point-min))
     (insert "\n")
     (goto-char (point-min))
@@ -787,5 +796,4 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 ;; Todo:
 ;; Don't record own clicks
-;; Display update time in *Bang*
 ;; Figure out time zones.
