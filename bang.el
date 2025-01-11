@@ -231,8 +231,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
       1 'help-echo
       (elt (vtable-current-object) (vtable-current-column)))))
    ((eq (vtable-current-column) 3)
-    (bang--view-referrer-details
-     (elt (vtable-current-object) (vtable-current-column))))))
+    (bang--view-referrer-details (elt (vtable-current-object) 4)))))
 
 (defun bang--view-page-details (url)
   (switch-to-buffer "*Bang Details*")
@@ -253,7 +252,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (elt elem column))
      :keymap bang-mode-map)))
 
-(defun bang--view-referrer-details (url)
+(defun bang--view-referrer-details (urls)
   (switch-to-buffer "*Bang Details*")
   (let ((inhibit-read-only t))
     (erase-buffer)
@@ -262,9 +261,12 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (make-vtable
      :face 'bang
      :columns '((:name "Time")
+		(:name "Referrer" :max-width 40)
 		(:name "Page"))
-     :objects (bang-sel "select time, page from referrers where time > ? and referrer = ? order by time"
-			(bang--now) url)
+     :objects (apply #'bang-sel
+		     (format "select time, referrer, page from referrers where time > ? and referrer in (%s) order by time"
+			     (mapconcat (lambda (_) "?") urls ","))
+		     (bang--now) urls)
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Page")
@@ -626,10 +628,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		   (cond
 		    ((= (elt referrer 0) ?-)
 		     (if (= (length (seq-uniq urls #'equal)) 1)
-			 (push (list length (car urls)) result)
-		       (push (list length (substring referrer 1)) result)))
+			 (push (list length (car urls) urls) result)
+		       (push (list length (substring referrer 1) urls) result)))
 		    (t
-		     (push (list length referrer) result)))))
+		     (push (list length referrer urls) result)))))
 	       table)
       (seq-take (nreverse (sort result #'car-less-than-car)) 10))))
 
