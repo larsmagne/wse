@@ -633,7 +633,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		    (t
 		     (push (list length referrer urls) result)))))
 	       table)
-      (seq-take (nreverse (sort result #'car-less-than-car)) 10))))
+      (let ((list (nreverse (sort result #'car-less-than-car))))
+	(if summarize
+	    (seq-take list 10)
+	  list)))))
 
 (defun bang--transform-referrer (url &optional summarize)
   (cond
@@ -649,6 +652,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (if summarize "Search" "Brave"))
    ((string-match-p "\\bm[.]baidu[.]com/\\'" url)
     (if summarize "Search" "Baidu"))
+   ((string-match-p "[a-z]+[.]wikipedia[.]org/\\'" url)
+    "Wikipedia")
    ((string-match-p "search[.]yahoo[.]com/\\'" url)
     (if summarize "Search" "Brave"))
    ((string-match-p "\\bduckduckgo[.]com/\\'" url)
