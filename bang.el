@@ -295,9 +295,45 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		       time))
        (buttonize "Total Countries" #'bang--view-total-countries))))))
 
+(defvar-keymap bang-clicks-mode-map
+  "v" #'bang-clicks-view-todays-media)
+
+(define-derived-mode bang-clicks-mode special-mode
+  (setq truncate-lines t))
+
+(defvar bang--shown-media (make-hash-table :test #'equal))
+
+(defun bang-clicks-view-todays-media ()
+  "View today's media clicks."
+  (interactive)
+  (let* ((objects
+	 (save-excursion
+	   (goto-char (point-min))
+	   (vtable-objects (vtable-current-table))))
+	 (urls (cl-loop for (_ url) in objects
+			when (and (bang--media-p url)
+				  (string-match-p
+				   (format-time-string "/uploads/%Y/%m/")
+				   url)
+				  (not (gethash url bang--shown-media)))
+			collect url)))
+    (unless urls
+      (error "No URLs today"))
+    (dolist (url urls)
+      (setf (gethash url bang--shown-media) t))
+    ;; This code doesn't really make sense in general, so it should be
+    ;; factored out.
+    (let ((browse-url-browser-function browse-url-secondary-browser-function))
+      (browse-url (pop urls))
+      (sleep-for 2)
+      (when urls
+	(let ((browse-url-firefox-program "/usr/local/bin/firefox/firefox"))
+	  (dolist (url urls)
+	    (browse-url url)))))))
+
 (defun bang--view-clicks (domain)
   (switch-to-buffer "*Clicks*")
-  (special-mode)
+  (bang-clicks-mode)
   (let ((inhibit-read-only t))
     (setq truncate-lines t)
     (erase-buffer)
@@ -316,7 +352,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang--view-total-views (_)
   (switch-to-buffer "*Total Bang*")
-  (special-mode)
   (let ((inhibit-read-only t))
     (setq truncate-lines t)
     (erase-buffer)
@@ -585,4 +620,4 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Output comments from data.php
 ;; bang.js is collecting too many titles, and wrong title for main page?
 ;; Display update time in *Bang*
-;; Command to open today's media links
+;; Figure out time zones.
