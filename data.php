@@ -22,7 +22,9 @@ if (! $from_id)
   $from_id = 0;
 $from_id = sprintf("%d", $from_id);
 
-$results = $wpdb->get_results("SELECT * FROM $table_name WHERE id > $from_id ORDER BY id");
+$sql = $wpdb->prepare("SELECT * FROM $table_name WHERE id > %d ORDER BY id",
+                      $from_id);
+$results = $wpdb->get_results($sql);
 
 $data = array();
 
