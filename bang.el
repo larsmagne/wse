@@ -154,13 +154,34 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defvar-keymap bang-mode-map
   :parent button-map
-  "g" #'bang-revert)
+  "g" #'bang-revert
+  "d" #'bang-view-date)
 
 (defun bang-revert ()
   "Update the current buffer."
   (interactive)
   (message "Updating...")
   (bang--poll-blogs #'bang))
+
+(defun bang-view-date (date)
+  (interactive (list (completing-read
+		      "Date to show: "
+		      (mapcar #'car (bang-sel "select distinct date from history order by date")))))
+  (switch-to-buffer "*Bang Date*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (bang--view-total-views nil date)
+    (goto-char (point-max))
+    (insert "\n")
+    (bang--view-total-referrers nil date)
+    (goto-char (point-max))
+    (insert "\n")
+    (bang--view-total-clicks nil date)
+    (goto-char (point-max))
+    (insert "\n")
+    (bang--view-total-countries nil date)
+    (goto-char (point-min))))
 
 (defun bang ()
   "Display Wordpress statistics."
@@ -350,17 +371,27 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (elt elem column)))
      :keymap bang-mode-map)))
 
-(defun bang--view-total-views (_)
-  (switch-to-buffer "*Total Bang*")
-  (let ((inhibit-read-only t))
-    (setq truncate-lines t)
-    (erase-buffer)
+(defun bang--future ()
+  "9999-12-12 23:59:00")
+
+(defun bang--view-total-views (_ &optional date)
+  (unless date
+    (switch-to-buffer "*Total Bang*"))
+  (let ((inhibit-read-only t)
+	(from (bang--now))
+	(to (bang--future)))
+    (if date
+	(setq from (concat date " 00:00:00")
+	      to (concat date " 23:59:59"))
+      (setq truncate-lines t)
+      (erase-buffer))
     (make-vtable
+     :use-header-line (not date)
      :face 'bang
      :columns '((:name "" :align 'right)
 		(:name "Posts & Pages"))
-     :objects (bang-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc, id"
-			(bang--now))
+     :objects (bang-sel "select count(page), title, page from views where time > ? and time <= ? group by page order by count(page) desc, id"
+			from to)
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Posts & Pages")
@@ -376,19 +407,25 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	   browse-url-secondary-browser-function)))
     (browse-url url)))
 
-(defun bang--view-total-referrers (_)
-  (switch-to-buffer "*Total Bang*")
-  (special-mode)
-  (let ((inhibit-read-only t))
-    (setq truncate-lines t)
-    (erase-buffer)
+(defun bang--view-total-referrers (_ &optional date)
+  (unless date
+    (switch-to-buffer "*Total Bang*"))
+  (let ((inhibit-read-only t)
+	(from (bang--now))
+	(to (bang--future)))
+    (if date
+	(setq from (concat date " 00:00:00")
+	      to (concat date " 23:59:59"))
+      (setq truncate-lines t)
+      (erase-buffer))
     (make-vtable
+     :use-header-line (not date)
      :face 'bang
      :columns '((:name "" :align 'right)
 		(:name "Referrers"))
      :objects (bang--transform-referrers
-	       (bang-sel "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
-			 (bang--now)))
+	       (bang-sel "select count(referrer), referrer from referrers where time > ? and time <= ? group by referrer order by count(referrer) desc"
+			 from to))
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Referrers")
@@ -396,18 +433,24 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (elt elem column)))
      :keymap bang-mode-map)))
 
-(defun bang--view-total-clicks (_)
-  (switch-to-buffer "*Total Bang*")
-  (special-mode)
-  (let ((inhibit-read-only t))
-    (setq truncate-lines t)
-    (erase-buffer)
+(defun bang--view-total-clicks (_ &optional date)
+  (unless date
+    (switch-to-buffer "*Total Bang*"))
+  (let ((inhibit-read-only t)
+	(from (bang--now))
+	(to (bang--future)))
+    (if date
+	(setq from (concat date " 00:00:00")
+	      to (concat date " 23:59:59"))
+      (setq truncate-lines t)
+      (erase-buffer))
     (make-vtable
+     :use-header-line (not date)
      :face 'bang
      :columns '((:name "" :align 'right)
 		(:name "Clicks"))
-     :objects (bang-sel "select count(distinct click), click from clicks where time > ? group by click order by count(click) desc"
-			(bang--now))
+     :objects (bang-sel "select count(distinct click), click from clicks where time > ? and time <= ? group by click order by count(click) desc"
+			from to)
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Clicks")
@@ -415,18 +458,24 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (elt elem column)))
      :keymap bang-mode-map)))
 
-(defun bang--view-total-countries (_)
-  (switch-to-buffer "*Total Bang*")
-  (special-mode)
-  (let ((inhibit-read-only t))
-    (setq truncate-lines t)
-    (erase-buffer)
+(defun bang--view-total-countries (_ &optional date)
+  (unless date
+    (switch-to-buffer "*Total Bang*"))
+  (let ((inhibit-read-only t)
+	(from (bang--now))
+	(to (bang--future)))
+    (if date
+	(setq from (concat date " 00:00:00")
+	      to (concat date " 23:59:59"))
+      (setq truncate-lines t)
+      (erase-buffer))
     (make-vtable
+     :use-header-line (not date)
      :face 'bang
      :columns '((:name "" :align 'right)
 		(:name "Countries"))
-     :objects (bang-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc"
-			(bang--now))
+     :objects (bang-sel "select count(country), name, code from views, countries where time > ? and time <= ? and views.country = countries.code group by country order by count(country) desc"
+			from to)
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Countries")
@@ -613,7 +662,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Group referrers by domain
 ;; Instrument mp4
 ;; Instrument lyte
-;; Allow choosing a historic date
 ;; Don't record own clicks
 ;; Command to see mode data about viewers of post
 ;; Command to see where Referrers went
