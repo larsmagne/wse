@@ -68,7 +68,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		   (kill-buffer (current-buffer))
 		   (if blogs
 		       (funcall func)
-		     (bang--update-data data callback))))))))
+		     (bang--update-data data callback))))
+	       nil t))))
     (funcall func)))      
 
 (defvar bang--filling-country nil)
@@ -90,7 +91,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (bang--fill-country))
   (bang--possibly-summarize-history)
   (when callback
-    (funcall callback)))
+    (funcall callback)
+    (message "Updating...done")))
 
 (defun bang--update-id (blog id)
   (if (bang-sel "select last_id from blogs where blog = ?" blog)
