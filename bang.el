@@ -716,6 +716,5 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Instrument lyte
 ;; Don't record own clicks
 ;; Output comments from data.php
-;; bang.js is collecting too many titles, and wrong title for main page?
 ;; Display update time in *Bang*
 ;; Figure out time zones.
