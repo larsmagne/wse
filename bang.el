@@ -603,12 +603,20 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun bang--transform-referrers (referrers &optional summarize)
   (let ((table (make-hash-table :test #'equal)))
     (cl-loop for (count url) in referrers
-	     do (cl-incf (gethash (bang--transform-referrer url summarize)
-				  table 0)
-			 count))
+	     for trans = (bang--transform-referrer url summarize)
+	     ;; OK, OK, this is stupid, but...
+	     do (cl-loop repeat count
+			 do (push url (gethash trans table nil))))
     (let ((result nil))
-      (maphash (lambda (referrer count)
-		 (push (list count referrer) result))
+      (maphash (lambda (referrer urls)
+		 (let ((length (length urls)))
+		   (cond
+		    ((= (elt referrer 0) ?-)
+		     (if (= (length (seq-uniq urls #'equal)) 1)
+			 (push (list length (car urls)) result)
+		       (push (list length (substring referrer 1)) result)))
+		    (t
+		     (push (list length referrer) result)))))
 	       table)
       (seq-take (nreverse (sort result #'car-less-than-car)) 10))))
 
@@ -634,6 +642,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     "Twitter")
    ((and summarize (member (bang--host url) bang-blogs))
     "Interblog")
+   (summarize
+    (concat "-" (bang--host url)))
    (t
     url)))
 
@@ -776,7 +786,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;;; bang.el ends here
 
 ;; Todo:
-;; Group referrers by domain
 ;; Don't record own clicks
 ;; Display update time in *Bang*
 ;; Figure out time zones.
