@@ -27,7 +27,6 @@ $sql = $wpdb->prepare("SELECT * FROM $table_name WHERE id > %d ORDER BY id",
 $results = $wpdb->get_results($sql);
 
 $data = array();
-
 foreach ($results as $result) {
   $data[] = array($result->id, $result->time, $result->click,
                   $result->page, $result->referrer, $result->ip,
@@ -36,4 +35,12 @@ foreach ($results as $result) {
 
 $output = array();
 $output["data"] = $data;
+
+$comment_table = $wpdb->prefix . 'comments';
+$cutoff = preg_replace("/T/", " ",
+                       preg_replace("/[+].*/", "",
+                                    date("c", time() - 7*24*60*60)));
+$results = $wpdb->get_results("select comment_id, comment_post_id, comment_author, comment_author_email, comment_author_url, comment_date_gmt, comment_content, comment_approved from $comment_table where comment_date > '$cutoff' and comment_approved <> 'spam'");
+$output["comments"] = $results;
+
 echo json_encode($output);

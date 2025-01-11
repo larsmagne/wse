@@ -57,7 +57,6 @@ document.addEventListener(
 
     // Instrument Lyte video elements.
     jQuery(".lyte-wrapper > div[itemprop='video']").click(function() {
-      console.log(this.id);
       if (this.id) {
 	var link = "https://www.youtube.com/watch?v=" +
 	    this.id.replace(/^WYL_/, "");

@@ -83,7 +83,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		       do
 		       (bang--insert-data blog time click page referrer ip
 					  user-agent title)
-		       (bang--update-id blog id)))
+		       (bang--update-id blog id))
+	   do (bang--store-comments blog (gethash "comments" elems)))
+
   (unless bang--filling-country
     (bang--fill-country))
   (bang--possibly-summarize-history)
@@ -102,6 +104,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (unless bang--db
     (setq bang--db (sqlite-open
 		    (expand-file-name "bang.sqlite" user-emacs-directory)))
+    ;; Statistics.
     (bang-exec "create table if not exists blogs (blog text primary key, last_id integer)")
     (bang-exec "create table if not exists country_counter (id integer)")
     (unless (bang-sel "select * from country_counter")
@@ -110,7 +113,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (bang-exec "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
     (bang-exec "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
     (bang-exec "create table if not exists history (id integer primary key, blog text, date date, views integer, visitors integer, clicks integer, referrers integer)")
-    (bang-exec "create table if not exists countries (code text primary key, name text)")))
+    (bang-exec "create table if not exists countries (code text primary key, name text)")
+
+    ;; Comments.
+    (bang-exec "create table if not exists comments (blog text, id integer, post_id integer, time datetime, author text, email text, url text, content text, status text)")))
 
 (defun bang--host (url)
   (url-host (url-generic-parse-url url)))
@@ -147,6 +153,22 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	(bang-exec
 	 "insert into referrers(blog, time, referrer, page) values(?, ?, ?, ?)"
 	 blog time referrer page)))))
+
+(defun bang--store-comments (blog comments)
+  (cl-loop for comment across comments
+	   unless (bang-sel "select id from comments where id = ? and blog = ?"
+			    (gethash "comment_id" comment)
+			    blog)
+	   do (bang-exec "insert into comments(blog, id, post_id, time, author, email, url, content, status) values(?, ?, ?, ?, ?, ?, ?, ?, ?)"
+			 blog
+			 (gethash "comment_id" comment)
+			 (gethash "comment_post_id" comment)
+			 (gethash "comment_date_gmt" comment)
+			 (gethash "comment_author" comment)
+			 (gethash "comment_author_email" comment)
+			 (gethash "comment_url" comment)
+			 (gethash "comment_content" comment)
+			 (gethash "comment_approved" comment))))
 
 (define-derived-mode bang-mode special-mode "Bang"
   "Major mode for listing Wordpress statistics."
@@ -258,6 +280,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
      :keymap bang-mode-map)
+
     (goto-char (point-max))
     (insert "\n")
     (make-vtable
@@ -278,13 +301,41 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	(t
 	 (elt elem column))))
      :keymap bang-mode-map)
+
+    (goto-char (point-max))
+    (insert "\n")
+    (make-vtable
+     :face 'bang
+     :use-header-line nil
+     :columns '((:name "Blog" :max-width 20)
+		(:name "Status")
+		(:name "Author")
+		(:name "Comment"))
+     :objects (bang-sel "select blog, status, author, content, post_id from comments where time > ? order by time desc"
+			(bang--time (- (time-convert (current-time) 'integer)
+				       (* 4 60 60 24))))
+     :getter
+     (lambda (elem column vtable)
+       (cond
+	((equal (vtable-column vtable column) "Status")
+	 (if (equal (elt elem column) "1")
+	     ""
+	   (elt elem column)))
+	((equal (vtable-column vtable column) "Comment")
+	 (let ((url (format "https://%s/?p=%d"
+			    (elt elem 0) (elt elem 4))))
+	   (buttonize (elt elem column) #'bang--browse
+		      url url)))
+	(t
+	 (elt elem column))))
+     :keymap bang-mode-map)
+
     (goto-char (point-min))
     (insert "\n")
     (goto-char (point-min))
     (bang--plot-history)
     (bang--plot-blogs-today)
-    (insert "\n")
-    ))
+    (insert "\n")))
 
 (defun bang--countrify (code name)
   (if (= (length code) 2)
@@ -713,6 +764,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Todo:
 ;; Group referrers by domain
 ;; Don't record own clicks
-;; Output comments from data.php
 ;; Display update time in *Bang*
 ;; Figure out time zones.
+;; Delete old data from WP database.
+;; Add some indices here and there,
