@@ -771,5 +771,4 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Don't record own clicks
 ;; Display update time in *Bang*
 ;; Figure out time zones.
-;; Delete old data from WP database.
 ;; Add some indices here and there,

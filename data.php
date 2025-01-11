@@ -33,13 +33,15 @@ foreach ($results as $result) {
                   $result->user_agent, $result->title);
 }
 
+// Tidy up the database by deleting months-old data.
+$old = date("Y-m-d H:i:s", time() - 31*24*60*60);
+$wpdb->query("delete from $table_name where time < '$old'");
+
 $output = array();
 $output["data"] = $data;
 
 $comment_table = $wpdb->prefix . 'comments';
-$cutoff = preg_replace("/T/", " ",
-                       preg_replace("/[+].*/", "",
-                                    date("c", time() - 7*24*60*60)));
+$cutoff = date("Y-m-d H:i:s", time() - 7*24*60*60);
 $results = $wpdb->get_results("select comment_id, comment_post_id, comment_author, comment_author_email, comment_author_url, comment_date_gmt, comment_content, comment_approved from $comment_table where comment_date > '$cutoff' and comment_approved <> 'spam'");
 $output["comments"] = $results;
 
