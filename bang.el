@@ -458,6 +458,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (buttonize "Total Countries" #'bang--view-total-countries))))))
 
 (defvar-keymap bang-clicks-mode-map
+  :parent button-map
   "v" #'bang-clicks-view-todays-media)
 
 (define-derived-mode bang-clicks-mode special-mode
@@ -473,7 +474,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	   (goto-char (point-min))
 	   (vtable-objects (vtable-current-table))))
 	 (urls (cl-loop for (_ url) in objects
-			when (and (bang--media-p url)
+			when (and (and (bang--media-p url)
+				       (not (string-match "[.]mp4\\'" url)))
 				  (string-match-p
 				   (format-time-string "/uploads/%Y/%m/")
 				   url)
@@ -510,7 +512,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (if (equal (vtable-column vtable column) "Clicks")
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
-     :keymap bang-mode-map)))
+     :keymap bang-clicks-mode-map)))
 
 (defun bang--future ()
   "9999-12-12 23:59:00")
