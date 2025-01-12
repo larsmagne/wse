@@ -20,6 +20,7 @@
 
 (require 'cl-lib)
 (require 'eplot)
+(require 'url-domsuf)
 
 (defface bang
   '((t :family "Futura"))
@@ -99,7 +100,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (bang-exec "insert into blogs(blog, last_id) values(?, ?)" blog id)))
 
 (defun bang--bot-p (user-agent)
-  (string-match-p "Googlebot\\|AhrefsBot\\|[Bb]ot/" user-agent))
+  (let ((case-fold-search t))
+    (string-match-p "bot/\\|spider\\b" user-agent)))
 
 (defun bang--initialize ()
   (unless bang--db
@@ -615,6 +617,16 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (elt elem column)))
      :keymap bang-mode-map)))
 
+(defun bang--get-domain (host)
+  "Return the shortest domain that refers to an entity.
+I.e., \"google.com\" or \"google.co.uk\"."
+  (let* ((bits (reverse (split-string host "[.]")))
+	 (domain (pop bits)))
+    (cl-loop while (and bits
+			(not (url-domsuf-cookie-allowed-p domain)))
+	     do (setq domain (concat (pop bits) "." domain)))
+    domain))
+
 (defun bang--transform-referrers (referrers &optional summarize)
   (let ((table (make-hash-table :test #'equal)))
     (cl-loop for (count url) in referrers
@@ -629,7 +641,16 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		    ((= (elt referrer 0) ?-)
 		     (if (= (length (seq-uniq urls #'equal)) 1)
 			 (push (list length (car urls) urls) result)
-		       (push (list length (substring referrer 1) urls) result)))
+		       (push (list
+			      length
+			      (concat "🔽 "
+				      (buttonize
+				       (substring referrer 1)
+				       (lambda (urls)
+					 (bang--view-referrer-details urls))
+				       urls))
+			      urls)
+			     result)))
 		    (t
 		     (push (list length referrer urls) result)))))
 	       table)
@@ -660,6 +681,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (if summarize "Search" "DuckDuckGo"))
    ((string-match-p "\\byandex[.]ru/\\'" url)
     (if summarize "Search" "Yandex"))
+   ((string-match-p "\\b[.]qwant[.]com/\\'" url)
+    (if summarize "Search" "Qwant"))
    ((and summarize (string-match-p "\\byandex[.]ru/" url))
     "Search")
    ((and summarize (string-match-p "\\ampproject[.]org/" url))
@@ -669,7 +692,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
    ((and summarize (member (bang--host url) bang-blogs))
     "Interblog")
    (summarize
-    (concat "-" (bang--host url)))
+    (concat "-" (bang--get-domain (bang--host url))))
    (t
     url)))
 
@@ -814,5 +837,5 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Todo:
 ;; Figure out time zones.
 ;;   Log everything in GMT?
-;; Add a 🔽 for same-domain Referrers with different URLs.
 ;; Fix `v' on other tables.
+;; Select comments based on comment_id.
