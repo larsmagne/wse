@@ -77,7 +77,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     string))
 
 (defun bang--time (time)
-  (format-time-string "%Y-%m-%d %H:%M:%S" time "Z"))
+  (format-time-string "%Y-%m-%d %H:%M:%S" time))
 
 (defun bang--now ()
   (bang--time (- (time-convert (current-time) 'integer)
@@ -85,6 +85,11 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang--future ()
   "9999-12-12 23:59:00")
+
+(defun bang--convert-time (time)
+  "Convert TIME from GMT/Z/UTC to local time."
+  (bang--time
+   (encode-time (iso8601-parse (concat (string-replace " " "T" time) "Z")))))
 
 (defun bang--browse (url)
   (let ((browse-url-browser-function
@@ -161,7 +166,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		       (cl-coerce elem 'list)
 		       unless (bang--bot-p user-agent)
 		       do
-		       (bang--insert-data blog time click page referrer ip
+		       (bang--insert-data blog (bang--convert-time time)
+					  click page referrer ip
 					  user-agent title)
 		       (bang--update-id blog id))
 	   do (bang--store-comments blog (gethash "comments" elems)))
@@ -249,7 +255,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			 blog
 			 (gethash "comment_id" comment)
 			 (gethash "comment_post_id" comment)
-			 (gethash "comment_date_gmt" comment)
+			 (bang--convert-time
+			  (gethash "comment_date_gmt" comment))
 			 (gethash "comment_author" comment)
 			 (gethash "comment_author_email" comment)
 			 (gethash "comment_url" comment)
