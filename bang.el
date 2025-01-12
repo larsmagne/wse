@@ -196,7 +196,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (bang-exec "create table if not exists blogs (blog text primary key, last_id integer, last_comment_id integer)")
 
     ;; Statistics.
-    (bang-exec "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text)")
+    (bang-exec "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text, referrer text)")
     (bang-exec "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
     (bang-exec "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
 
@@ -230,8 +230,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   blog time click (bang--host click) page))
       ;; Insert into views.
       (bang-exec
-       "insert into views(blog, date, time, page, ip, user_agent, title, country) values(?, ?, ?, ?, ?, ?, ?, ?)"
-       blog (substring time 0 10) time page ip user-agent title "")
+       "insert into views(blog, date, time, page, ip, user_agent, title, country, referrer) values(?, ?, ?, ?, ?, ?, ?, ?, ?)"
+       blog (substring time 0 10) time page ip user-agent title ""
+       referrer)
       ;; Check whether to register a referrer.
       (when (and (bang--url-p referrer)
 		 (not (equal (bang--host referrer) blog)))
@@ -401,9 +402,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :face 'bang
      :columns '((:name "Time")
 		(:name "IP" :max-width 20)
+		(:name "Referrer" :max-width 40)
 		(:name "Country")
 		(:name "User-Agent"))
-     :objects (bang-sel "select time, ip, country, user_agent from views where time > ? and page = ? order by time"
+     :objects (bang-sel "select time, ip, referrer, country, user_agent from views where time > ? and page = ? order by time"
 			(bang--now) url)
      :getter
      (lambda (elem column _vtable)
