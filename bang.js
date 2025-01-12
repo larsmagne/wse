@@ -34,7 +34,7 @@ document.addEventListener(
     jQuery("video").each(function() {
       var link;
       var $source = jQuery(this).find("source");
-      if ($source.length == 1) {
+      if (!this.autoplay && $source.length == 1) {
 	link = $source.attr("src");
 	jQuery(this).on("playing", function() {
 	  var link;
