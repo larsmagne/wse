@@ -207,7 +207,12 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   "Update the current buffer."
   (interactive)
   (message "Updating...")
-  (bang--poll-blogs #'bang))
+  (let ((buffer (current-buffer)))
+    (bang--poll-blogs
+     (lambda ()
+       (when (buffer-live-p buffer)
+	 (with-current-buffer buffer
+	   (bang--render)))))))
 
 (defun bang-view-date (date)
   (interactive (list (completing-read
@@ -287,6 +292,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   "Display Wordpress statistics."
   (interactive)
   (switch-to-buffer "*Bang*")
+  (bang--render))
+
+(defun bang--render ()
   (bang--initialize)
   (bang-mode)
   (let ((inhibit-read-only t))
