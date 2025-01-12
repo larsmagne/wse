@@ -39,17 +39,18 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (setq func
 	  (lambda ()
 	    (let* ((blog (pop blogs))
-		   (id (or (caar
-			    (bang-sel "select last_id from blogs where blog = ?"
-				      blog))
-			   0))
+		   (ids (or (car
+			     (bang-sel "select last_id, last_comment_id from blogs where blog = ?"
+				       blog))
+			    '(0 0)))
 		   (url-request-method "POST")
 		   (url-request-extra-headers
 		    '(("Content-Type" . "application/x-www-form-urlencoded")
 		      ("Charset" . "UTF-8")))
 		   (url-request-data
 		    (mm-url-encode-www-form-urlencoded
-		     `(("from_id" . ,(format "%d" id))
+		     `(("from_id" . ,(format "%d" (car ids)))
+		       ("from_comment_id" . ,(format "%d" (or (cadr ids) 0)))
 		       ("password" . ,(auth-info-password
 				       (car
 					(auth-source-search
@@ -109,7 +110,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		    (expand-file-name "bang.sqlite" user-emacs-directory)))
 
     ;; Keeping track of ids per blog.
-    (bang-exec "create table if not exists blogs (blog text primary key, last_id integer)")
+    (bang-exec "create table if not exists blogs (blog text primary key, last_id integer, last_comment_id integer)")
 
     ;; Statistics.
     (bang-exec "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text)")
@@ -168,9 +169,14 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang--store-comments (blog comments)
   (cl-loop for comment across comments
+	   do (bang-exec "update blogs set last_comment_id = ? where blog = ?"
+			 (gethash "comment_id" comment)
+			 blog)
 	   if (bang-sel "select id from comments where id = ? and blog = ?"
-			    (gethash "comment_id" comment)
-			    blog)
+			(gethash "comment_id" comment)
+			blog)
+	   ;; We're selecting on comment_id now, so we'll never get
+	   ;; updated statuses...
 	   do (bang-exec "update comments set status = ? where blog = ? and id = ?"
 			 (gethash "comment_approved" comment)
 			 blog
@@ -842,4 +848,3 @@ I.e., \"google.com\" or \"google.co.uk\"."
 ;; Todo:
 ;; Figure out time zones.
 ;;   Log everything in GMT?
-;; Select comments based on comment_id.

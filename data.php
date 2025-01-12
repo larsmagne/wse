@@ -21,7 +21,14 @@ $table_name = $wpdb->prefix . 'bang_stats';
 $from_id = @$_REQUEST["from_id"];
 if (! $from_id)
   $from_id = 0;
-$from_id = sprintf("%d", $from_id);
+else
+  $from_id = sprintf("%d", $from_id);
+
+$from_comment_id = @$_REQUEST["from_comment_id"];
+if (! $from_comment_id)
+  $from_comment_id = 0;
+else
+  $from_comment_id = sprintf("%d", $from_comment_id);
 
 // Select new stats data.
 $sql = $wpdb->prepare("SELECT * FROM $table_name WHERE id > %d ORDER BY id",
@@ -45,7 +52,16 @@ $output["data"] = $data;
 // Also include comments in the data.
 $comment_table = $wpdb->prefix . 'comments';
 $cutoff = date("Y-m-d H:i:s", time() - 7*24*60*60);
-$results = $wpdb->get_results("select comment_id, comment_post_id, comment_author, comment_author_email, comment_author_url, comment_date_gmt, comment_content, comment_approved from $comment_table where comment_date > '$cutoff' and comment_approved <> 'spam'");
+$select = "select comment_id, comment_post_id, comment_author, comment_author_email, comment_author_url, comment_date_gmt, comment_content, comment_approved from $comment_table where ";
+
+if ($from_comment_id) {
+  $sql = $wpdb->prepare("$select comment_id > %s and comment_approved <> 'spam' order by comment_id",
+                        $from_comment_id);
+  $results = $wpdb->get_results($sql);
+} else {
+  $results = $wpdb->get_results("$select comment_date > '$cutoff' and comment_approved <> 'spam' order by comment_id");
+}
+
 $output["comments"] = $results;
 
 echo json_encode($output);
