@@ -543,7 +543,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang--browse (url)
   (let ((browse-url-browser-function
-	 (if (bang--media-p url)
+	 (if (and (bang--media-p url)
+		  (not (string-match "[.]mp4\\'" url)))
 	     browse-url-browser-function
 	   browse-url-secondary-browser-function)))
     (browse-url url)))
