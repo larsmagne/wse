@@ -228,12 +228,13 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (interactive)
   (cond
    ((eq (vtable-current-column) 1)
-    (bang--view-page-details
-     (get-text-property
-      1 'help-echo
-      (elt (vtable-current-object) (vtable-current-column)))))
+    (when-let ((data (elt (vtable-current-object) (vtable-current-column)))
+	       (url (get-text-property 1 'help-echo data)))
+      (bang--view-page-details url)))
    ((eq (vtable-current-column) 3)
-    (bang--view-referrer-details (elt (vtable-current-object) 4)))))
+    (when-let ((urls (elt (vtable-current-object) 4)))
+      (when (listp urls)
+	(bang--view-referrer-details urls))))))
 
 (defun bang--view-page-details (url)
   (switch-to-buffer "*Bang Details*")
@@ -679,10 +680,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (if summarize "Search" "Brave"))
    ((string-match-p "\\bduckduckgo[.]com/\\'" url)
     (if summarize "Search" "DuckDuckGo"))
-   ((string-match-p "\\byandex[.]ru/\\'" url)
+   ((string-match-p "\\byandex[.]ru/" url)
     (if summarize "Search" "Yandex"))
    ((string-match-p "\\b[.]qwant[.]com/\\'" url)
     (if summarize "Search" "Qwant"))
+   ((string-match-p "\\b[.]?kagi[.]com/\\'" url)
+    (if summarize "Search" "Kagi"))
+   ((string-match-p "\\b[.]ecosia[.]org/\\'" url)
+    (if summarize "Search" "Ecosia"))
    ((and summarize (string-match-p "\\byandex[.]ru/" url))
     "Search")
    ((and summarize (string-match-p "\\ampproject[.]org/" url))
@@ -837,5 +842,4 @@ I.e., \"google.com\" or \"google.co.uk\"."
 ;; Todo:
 ;; Figure out time zones.
 ;;   Log everything in GMT?
-;; Fix `v' on other tables.
 ;; Select comments based on comment_id.
