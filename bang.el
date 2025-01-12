@@ -77,7 +77,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     string))
 
 (defun bang--time (time)
-  (format-time-string "%Y-%m-%d %H:%M:%S" time))
+  (format-time-string "%Y-%m-%d %H:%M:%S" time "Z"))
 
 (defun bang--now ()
   (bang--time (- (time-convert (current-time) 'integer)
@@ -873,5 +873,3 @@ I.e., \"google.com\" or \"google.co.uk\"."
 ;;; bang.el ends here
 
 ;; Todo:
-;; Figure out time zones.
-;;   Log everything in GMT?

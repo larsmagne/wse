@@ -37,7 +37,7 @@ if (! preg_match("#bot/#i", $user_agent)) {
   $wpdb->insert(
     $table_name,
     array(
-      'time' => current_time('mysql'),
+      'time' => current_time('mysql', true),
       'click' => $click ?? "",
       'page' => $page ?? "",
       'referrer' => $referrer ?? "",
