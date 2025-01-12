@@ -887,5 +887,3 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (provide 'bang)
 
 ;;; bang.el ends here
-
-;; Todo:
