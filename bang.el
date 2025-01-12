@@ -657,8 +657,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :use-header-line (not date)
      :face 'bang
      :columns '((:name "" :align 'right)
+		(:name "Blog" :max-width 20)
 		(:name "Posts & Pages"))
-     :objects (bang-sel "select count(page), title, page from views where time > ? and time <= ? group by page order by count(page) desc, id"
+     :objects (bang-sel "select count(page), blog, title, page from views where time > ? and time <= ? group by page order by count(page) desc, id"
 			from to)
      :getter
      (lambda (elem column vtable)
