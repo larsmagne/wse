@@ -46,7 +46,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (switch-to-buffer "*Bang*")
   (bang--render))
 
-
 ;; Helper functions.
 
 (defun bang--bot-p (user-agent)
