@@ -33,6 +33,9 @@
   "A list of blogs to collect statistics from.
 This should be a list of names (like \"foo.org\" and not URLs.")
 
+(defvar bang-entries 12
+  "The number of entries to display.")
+
 ;; Internal variables.
 (defvar bang--db nil)
 (defvar bang--filling-country nil)
@@ -517,15 +520,15 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun bang--get-page-table-data ()
   (let* ((time (bang--now))
 	 (pages
-	  (bang-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit 10"
-		    time))
+	  (bang-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
+		    time bang-entries))
 	 (referrers
 	  (bang--transform-referrers
 	   (bang-sel "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
 		     time)
 	   t)))
     (nconc
-     (cl-loop for i from 0 upto 9
+     (cl-loop for i from 0 upto (1- bang-entries)
 	      for page = (elt pages i)
 	      collect
 	      (append (if page
@@ -552,13 +555,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun bang--get-click-table-data ()
   (let* ((time (bang--now))
 	 (clicks
-	  (bang-sel "select count(domain), domain, count(distinct click), click from clicks where time > ? group by domain order by count(domain) desc limit 10"
-		    time))
+	  (bang-sel "select count(domain), domain, count(distinct click), click from clicks where time > ? group by domain order by count(domain) desc limit ?"
+		    time bang-entries))
 	 (countries
-	  (bang-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit 10"
-		    time)))
+	  (bang-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit ?"
+		    time bang-entries)))
     (nconc
-     (cl-loop for i from 0 upto 9
+     (cl-loop for i from 0 upto (1- bang-entries)
 	      for click = (elt clicks i)
 	      collect
 	      (append (if click
@@ -770,7 +773,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	       table)
       (let ((list (nreverse (sort result #'car-less-than-car))))
 	(if summarize
-	    (seq-take list 10)
+	    (seq-take list bang-entries)
 	  list)))))
 
 (defun bang--transform-referrer (url &optional summarize)
