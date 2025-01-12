@@ -22,15 +22,95 @@
 (require 'eplot)
 (require 'url-domsuf)
 
+(defvar bang-font "sans-serif"
+  "Font family to use in buffer and charts.")
+
 (defface bang
-  '((t :family "Futura"))
+  `((t :family ,bang-font))
   "The face to use in bang buffers.")
 
 (defvar bang-blogs nil
   "A list of blogs to collect statistics from.
 This should be a list of names (like \"foo.org\" and not URLs.")
 
+;; Internal variables.
 (defvar bang--db nil)
+(defvar bang--filling-country nil)
+
+(defun bang ()
+  "Display Wordpress statistics."
+  (interactive)
+  (switch-to-buffer "*Bang*")
+  (bang--render))
+
+
+;; Helper functions.
+
+(defun bang--bot-p (user-agent)
+  (let ((case-fold-search t))
+    (string-match-p "bot/\\|spider\\b" user-agent)))
+
+(defun bang--host (url)
+  (url-host (url-generic-parse-url url)))
+
+(defun bang--url-p (string)
+  (and (and (stringp string))
+       (not (zerop (length string)))
+       (string-match-p "\\`[a-z]+:" string)))
+
+(defun bang--media-p (click)
+  (string-match "[.]\\(mp4\\|png\\|jpg\\|jpeg\\|webp\\|webp\\)\\'" click))
+
+(defun bang--countrify (code name)
+  (if (= (length code) 2)
+      ;; Convert the country code into a Unicode flag.
+      (concat (string (+ #x1f1a5 (elt code 0)) (+ #x1f1a5 (elt code 1)))
+	      " " name)
+    name))
+
+(defun bang--pretty-url (string)
+  (replace-regexp-in-string "\\`[a-z]+://" "" string))
+
+(defun bang--possibly-buttonize (string)
+  (if (bang--url-p string)
+      (buttonize (bang--pretty-url string) #'bang--browse string string)
+    string))
+
+(defun bang--time (time)
+  (format-time-string "%Y-%m-%d %H:%M:%S" time))
+
+(defun bang--now ()
+  (bang--time (- (time-convert (current-time) 'integer)
+		 (* 60 60 24))))
+
+(defun bang--future ()
+  "9999-12-12 23:59:00")
+
+(defun bang--browse (url)
+  (let ((browse-url-browser-function
+	 (if (and (bang--media-p url)
+		  (not (string-match "[.]mp4\\'" url)))
+	     browse-url-browser-function
+	   browse-url-secondary-browser-function)))
+    (browse-url url)))
+
+(defun bang--get-domain (host)
+  "Return the shortest domain that refers to an entity.
+I.e., \"google.com\" or \"google.co.uk\"."
+  (let* ((bits (reverse (split-string host "[.]")))
+	 (domain (pop bits)))
+    (cl-loop while (and bits
+			(not (url-domsuf-cookie-allowed-p domain)))
+	     do (setq domain (concat (pop bits) "." domain)))
+    domain))
+
+(defun bang-sel (statement &rest args)
+  (sqlite-select bang--db statement args))
+
+(defun bang-exec (statement &rest args)
+  (sqlite-execute bang--db statement args))
+
+;; Update data.
 
 (defun bang--poll-blogs (&optional callback)
   (let ((blogs bang-blogs)
@@ -74,8 +154,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	       nil t))))
     (funcall func)))      
 
-(defvar bang--filling-country nil)
-
 (defun bang--update-data (data &optional callback)
   (cl-loop for (blog . elems) in data
 	   do (cl-loop for elem across (gethash "data" elems)
@@ -99,10 +177,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (if (bang-sel "select last_id from blogs where blog = ?" blog)
       (bang-exec "update blogs set last_id = ? where blog = ?" id blog)
     (bang-exec "insert into blogs(blog, last_id) values(?, ?)" blog id)))
-
-(defun bang--bot-p (user-agent)
-  (let ((case-fold-search t))
-    (string-match-p "bot/\\|spider\\b" user-agent)))
 
 (defun bang--initialize ()
   (unless bang--db
@@ -130,17 +204,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     ;; Comments.
     (bang-exec "create table if not exists comments (blog text, id integer, post_id integer, time datetime, author text, email text, url text, content text, status text)")
     (bang-exec "create unique index if not exists commentsidx1 on comments(blog, id)")))
-
-(defun bang--host (url)
-  (url-host (url-generic-parse-url url)))
-
-(defun bang--url-p (string)
-  (and (and (stringp string))
-       (not (zerop (length string)))
-       (string-match-p "\\`[a-z]+:" string)))
-
-(defun bang--media-p (click)
-  (string-match "[.]\\(mp4\\|png\\|jpg\\|jpeg\\|webp\\|webp\\)\\'" click))
 
 (defun bang--insert-data (blog time click page referrer ip user-agent title)
   ;; Titles aren't set for clicks.
@@ -193,8 +256,77 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 			 (gethash "comment_content" comment)
 			 (gethash "comment_approved" comment))))
 
+(defun bang--possibly-summarize-history ()
+  (let ((max (caar (bang-sel "select max(date) from history"))))
+    (when (or (not max)
+	      (string< max (substring (bang--now) 0 10)))
+      (bang--summarize-history))))
+
+(defun bang--summarize-history ()
+  (dolist (blog bang-blogs)
+    (cl-loop with max-date = (caar (bang-sel "select date from views where blog = ? order by id desc limit 1"
+					     blog))
+	     for (date views visitors) in
+	     (bang-sel "select date, count(date), count(distinct ip) from views where date < ? and blog = ? group by date order by date"
+		       max-date blog)
+	     unless (bang-sel "select date from history where blog = ? and date = ?"
+			      blog date)
+	     do (bang-exec "insert into history(blog, date, views, visitors, clicks, referrers) values (?, ?, ?, ?, ?, ?)"
+			   blog date views visitors
+			   (caar (bang-sel "select count(*) from clicks where blog = ? and time between ? and ?"
+					   blog (concat date " 00:00:00")
+					   (concat date " 23:59:59")))
+			   (caar (bang-sel "select count(*) from referrers where blog = ? and time between ? and ?"
+					   blog (concat date " 00:00:00")
+					   (concat date " 23:59:59")))))))
+
+(defun bang--fill-country ()
+  (setq bang--filling-country t)
+  (let ((id (or (caar (bang-sel "select id from country_counter"))
+		0))
+	func)
+    (setq func
+	  (lambda ()
+	    (let ((next
+		   (caar (bang-sel "select min(id) from views where id > ?"
+				   id))))
+	      (if (not next)
+		  (setq bang--filling-country nil)
+		(url-retrieve
+		 (format "http://ip-api.com/json/%s"
+			 (caar (bang-sel "select ip from views where id = ?"
+					 next)))
+		 (lambda (status)
+		   (goto-char (point-min))
+		   (let ((country-code "-")
+			 (country-name nil))
+		     (when (and (not (plist-get status :error))
+				(search-forward "\n\n" nil t))
+		       (let ((json (json-parse-buffer)))
+			 (when (equal (gethash "status" json) "success")
+			   (setq country-code (gethash "countryCode" json)
+				 country-name (gethash "country" json)))))
+		     (kill-buffer (current-buffer))
+		     (bang-exec "update views set country = ? where id = ?"
+				country-code next)
+		     (bang-exec "update country_counter set id = ?" next)
+		     (when (and country-name
+				(not (bang-sel "select * from countries where code = ?"
+					       country-code)))
+		       (bang-exec "insert into countries(code, name) values (?, ?)"
+				  country-code country-name))
+		     (setq id next)
+		     ;; The API is rate limited at 45 per minute, so
+		     ;; poll max 30 times per minute.
+		     (run-at-time 2 nil func)))
+		 nil t)))))
+    (funcall func)))
+
+;; Modes and command for modes.
+
 (define-derived-mode bang-mode special-mode "Bang"
   "Major mode for listing Wordpress statistics."
+  :interactive nil
   (setq truncate-lines t))
 
 (defvar-keymap bang-mode-map
@@ -205,7 +337,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang-revert ()
   "Update the current buffer."
-  (interactive)
+  (interactive nil bang-mode)
   (message "Updating...")
   (let ((buffer (current-buffer)))
     (bang--poll-blogs
@@ -215,9 +347,11 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	   (bang--render)))))))
 
 (defun bang-view-date (date)
-  (interactive (list (completing-read
-		      "Date to show: "
-		      (mapcar #'car (bang-sel "select distinct date from history order by date")))))
+  (interactive
+   (list (completing-read
+	  "Date to show: "
+	  (mapcar #'car (bang-sel "select distinct date from history order by date"))))
+   bang-mode)
   (switch-to-buffer "*Bang Date*")
   (let ((inhibit-read-only t))
     (erase-buffer)
@@ -236,7 +370,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun bang-view-details ()
   "View details of the URL under point."
-  (interactive)
+  (interactive nil bang-mode)
   (cond
    ((eq (vtable-current-column) 1)
     (when-let ((data (elt (vtable-current-object) (vtable-current-column)))
@@ -287,12 +421,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	   (bang--possibly-buttonize (elt elem column))
 	 (elt elem column)))
      :keymap bang-mode-map)))
-
-(defun bang ()
-  "Display Wordpress statistics."
-  (interactive)
-  (switch-to-buffer "*Bang*")
-  (bang--render))
 
 (defun bang--render ()
   (bang--initialize)
@@ -379,21 +507,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     (bang--plot-blogs-today)
     (insert "\n")))
 
-(defun bang--countrify (code name)
-  (if (= (length code) 2)
-      ;; Convert the country code into a Unicode flag.
-      (concat (string (+ #x1f1a5 (elt code 0)) (+ #x1f1a5 (elt code 1)))
-	      " " name)
-    name))
-
-(defun bang--pretty-url (string)
-  (replace-regexp-in-string "\\`[a-z]+://" "" string))
-
-(defun bang--possibly-buttonize (string)
-  (if (bang--url-p string)
-      (buttonize (bang--pretty-url string) #'bang--browse string string)
-    string))
-
 (defun bang--get-page-table-data ()
   (let* ((time (bang--now))
 	 (pages
@@ -428,10 +541,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (buttonize "Total Views" #'bang--view-total-views)
        (caar (bang-sel "select count(*) from referrers where time > ?" time))
        (buttonize "Total Referrers" #'bang--view-total-referrers))))))
-
-(defun bang--now ()
-  (bang--time (- (time-convert (current-time) 'integer)
-		 (* 60 60 24))))
 
 (defun bang--get-click-table-data ()
   (let* ((time (bang--now))
@@ -470,13 +579,14 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   "v" #'bang-clicks-view-todays-media)
 
 (define-derived-mode bang-clicks-mode special-mode
+  :interactive nil
   (setq truncate-lines t))
 
 (defvar bang--shown-media (make-hash-table :test #'equal))
 
 (defun bang-clicks-view-todays-media ()
   "View today's media clicks."
-  (interactive)
+  (interactive nil bang-clicks-mode)
   (let* ((objects
 	 (save-excursion
 	   (goto-char (point-min))
@@ -522,9 +632,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (elt elem column)))
      :keymap bang-clicks-mode-map)))
 
-(defun bang--future ()
-  "9999-12-12 23:59:00")
-
 (defun bang--view-total-views (_ &optional date)
   (unless date
     (switch-to-buffer "*Total Bang*"))
@@ -550,14 +657,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 		      #'bang--browse (elt elem 2) (elt elem 2))
 	 (elt elem column)))
      :keymap bang-mode-map)))
-
-(defun bang--browse (url)
-  (let ((browse-url-browser-function
-	 (if (and (bang--media-p url)
-		  (not (string-match "[.]mp4\\'" url)))
-	     browse-url-browser-function
-	   browse-url-secondary-browser-function)))
-    (browse-url url)))
 
 (defun bang--view-total-referrers (_ &optional date)
   (unless date
@@ -635,16 +734,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	 (elt elem column)))
      :keymap bang-mode-map)))
 
-(defun bang--get-domain (host)
-  "Return the shortest domain that refers to an entity.
-I.e., \"google.com\" or \"google.co.uk\"."
-  (let* ((bits (reverse (split-string host "[.]")))
-	 (domain (pop bits)))
-    (cl-loop while (and bits
-			(not (url-domsuf-cookie-allowed-p domain)))
-	     do (setq domain (concat (pop bits) "." domain)))
-    domain))
-
 (defun bang--transform-referrers (referrers &optional summarize)
   (let ((table (make-hash-table :test #'equal)))
     (cl-loop for (count url) in referrers
@@ -718,56 +807,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
    (t
     url)))
 
-(defun bang-sel (statement &rest args)
-  (sqlite-select bang--db statement args))
-
-(defun bang-exec (statement &rest args)
-  (sqlite-execute bang--db statement args))
-
-(defun bang--time (time)
-  (format-time-string "%Y-%m-%d %H:%M:%S" time))
-
-(defun bang--fill-country ()
-  (setq bang--filling-country t)
-  (let ((id (or (caar (bang-sel "select id from country_counter"))
-		0))
-	func)
-    (setq func
-	  (lambda ()
-	    (let ((next
-		   (caar (bang-sel "select min(id) from views where id > ?"
-				   id))))
-	      (if (not next)
-		  (setq bang--filling-country nil)
-		(url-retrieve
-		 (format "http://ip-api.com/json/%s"
-			 (caar (bang-sel "select ip from views where id = ?"
-					 next)))
-		 (lambda (status)
-		   (goto-char (point-min))
-		   (let ((country-code "-")
-			 (country-name nil))
-		     (when (and (not (plist-get status :error))
-				(search-forward "\n\n" nil t))
-		       (let ((json (json-parse-buffer)))
-			 (when (equal (gethash "status" json) "success")
-			   (setq country-code (gethash "countryCode" json)
-				 country-name (gethash "country" json)))))
-		     (kill-buffer (current-buffer))
-		     (bang-exec "update views set country = ? where id = ?"
-				country-code next)
-		     (bang-exec "update country_counter set id = ?" next)
-		     (when (and country-name
-				(not (bang-sel "select * from countries where code = ?"
-					       country-code)))
-		       (bang-exec "insert into countries(code, name) values (?, ?)"
-				  country-code country-name))
-		     (setq id next)
-		     ;; The API is rate limited at 45 per minute, so
-		     ;; poll max 30 times per minute.
-		     (run-at-time 2 nil func)))
-		 nil t)))))
-    (funcall func)))
+;; Plots.
 
 (defun bang--plot-blogs-today ()
   (let ((data 
@@ -776,11 +816,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (insert-image
      (svg-image
       (eplot-make-plot
-       '((Format horizontal-bar-chart)
+       `((Format horizontal-bar-chart)
 	 (Color vary)
 	 (Mode dark)
 	 (Layout compact)
-	 (Font Futura)
+	 (Font ,bang-font)
 	 (Margin-Left 10)
 	 (Horizontal-Label-Left 20)
 	 (Horizontal-Label-Font-Size 18)
@@ -797,30 +837,6 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		 collect (list visitors "# Label: " blog)))))
      "*")))
 
-(defun bang--possibly-summarize-history ()
-  (let ((max (caar (bang-sel "select max(date) from history"))))
-    (when (or (not max)
-	      (string< max (substring (bang--now) 0 10)))
-      (bang--summarize-history))))
-
-(defun bang--summarize-history ()
-  (dolist (blog bang-blogs)
-    (cl-loop with max-date = (caar (bang-sel "select date from views where blog = ? order by id desc limit 1"
-					     blog))
-	     for (date views visitors) in
-	     (bang-sel "select date, count(date), count(distinct ip) from views where date < ? and blog = ? group by date order by date"
-		       max-date blog)
-	     unless (bang-sel "select date from history where blog = ? and date = ?"
-			      blog date)
-	     do (bang-exec "insert into history(blog, date, views, visitors, clicks, referrers) values (?, ?, ?, ?, ?, ?)"
-			   blog date views visitors
-			   (caar (bang-sel "select count(*) from clicks where blog = ? and time between ? and ?"
-					   blog (concat date " 00:00:00")
-					   (concat date " 23:59:59")))
-			   (caar (bang-sel "select count(*) from referrers where blog = ? and time between ? and ?"
-					   blog (concat date " 00:00:00")
-					   (concat date " 23:59:59")))))))
-
 (defun bang--plot-history ()
   (let ((data (bang-sel "select date, sum(views), sum(visitors) from history group by date order by date limit 14"))
 	(today (car (bang-sel "select count(*), count(distinct ip) from views where time > ?"
@@ -830,9 +846,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (insert-image
      (svg-image
       (eplot-make-plot
-       '((Mode dark)
+       `((Mode dark)
 	 (Layout compact)
-	 (Font Futura)
+	 (Font ,bang-font)
 	 (Height 300)
 	 (Width 550)
 	 (Format bar-chart))
