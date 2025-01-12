@@ -586,7 +586,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defvar-keymap bang-clicks-mode-map
   :parent button-map
-  "v" #'bang-clicks-view-todays-media)
+  "v" #'bang-clicks-view-todays-media
+  "q" #'bury-buffer)
 
 (define-derived-mode bang-clicks-mode special-mode
   :interactive nil
