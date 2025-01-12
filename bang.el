@@ -810,6 +810,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
     "Amp")
    ((equal (bang--host url) "t.co")
     "Twitter")
+   ((equal (bang--get-domain (bang--host url)) "facebook.com")
+    "Facebook")
    ((and summarize (member (bang--host url) bang-blogs))
     "Interblog")
    (summarize
