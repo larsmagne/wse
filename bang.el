@@ -671,7 +671,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     "Bluesky")
    ((string-match-p "search[.]brave[.]com/\\'" url)
     (if summarize "Search" "Brave"))
-   ((string-match-p "\\bm[.]baidu[.]com/\\'" url)
+   ((string-match-p "\\b[.]?baidu[.]com/" url)
     (if summarize "Search" "Baidu"))
    ((string-match-p "[a-z]+[.]wikipedia[.]org/\\'" url)
     "Wikipedia")
