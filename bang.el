@@ -46,6 +46,20 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (switch-to-buffer "*Bang*")
   (bang--render))
 
+(defun bang-update ()
+  "Update *Bang* automatically periodically."
+  (interactive)
+  (run-at-time 60 (* 60 5) #'bang--update))
+
+;; This is a separate function instead of a lambda so that it's easier
+;; to find in `M-x list-timers'.
+(defun bang--update ()
+  (when-let ((idle (current-idle-time))
+	     (buffer (get-buffer "*Bang*")))
+    (when (> (time-convert (time-since idle) 'integer) 20)
+      (with-current-buffer buffer
+	(bang-revert)))))
+
 ;; Helper functions.
 
 (defun bang--bot-p (user-agent)
