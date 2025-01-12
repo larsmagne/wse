@@ -58,7 +58,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 	     (buffer (get-buffer "*Bang*")))
     (when (> (time-convert (time-since idle) 'integer) 20)
       (with-current-buffer buffer
-	(bang-revert)))))
+	(bang-revert t)))))
 
 ;; Helper functions.
 
@@ -192,8 +192,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (bang--fill-country))
   (bang--possibly-summarize-history)
   (when callback
-    (funcall callback)
-    (message "Updating...done")))
+    (funcall callback)))
 
 (defun bang--update-id (blog id)
   (if (bang-sel "select last_id from blogs where blog = ?" blog)
@@ -359,16 +358,19 @@ I.e., \"google.com\" or \"google.co.uk\"."
   "d" #'bang-view-date
   "v" #'bang-view-details)
 
-(defun bang-revert ()
+(defun bang-revert (&optional silent)
   "Update the current buffer."
   (interactive nil bang-mode)
-  (message "Updating...")
+  (unless silent
+    (message "Updating..."))
   (let ((buffer (current-buffer)))
     (bang--poll-blogs
      (lambda ()
        (when (buffer-live-p buffer)
 	 (with-current-buffer buffer
-	   (bang--render)))))))
+	   (bang--render)
+	   (unless silent
+	     (message "Updating...done"))))))))
 
 (defun bang-view-date (date)
   (interactive
