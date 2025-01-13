@@ -538,11 +538,26 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (wse--plot-blogs-today)
     (insert "\n")))
 
+(defun wse--transform-pages (data)
+  (let ((counts (make-hash-table :test #'equal))
+	(titles (make-hash-table :test #'equal))
+	(results nil))
+    (cl-loop for (count title url) in data
+	     for page = (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url)
+	     do (cl-incf (gethash page counts 0) count)
+	     (setf (gethash page titles) title))
+    (maphash (lambda (page count)
+	       (push (list count (gethash page titles) page)
+		     results))
+	     counts)
+    (seq-take (nreverse (sort results #'car-less-than-car)) wse-entries)))
+
 (defun wse--get-page-table-data ()
   (let* ((time (wse--24h))
 	 (pages
-	  (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
-		   time wse-entries))
+	  (wse--transform-pages
+	   (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
+		    time (* wse-entries 2))))
 	 (referrers
 	  (wse--transform-referrers
 	   (wse-sel "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
@@ -924,3 +939,4 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;; check history summary
 ;; Drop views for the same page from the same IP?
+;; Display update time in header
