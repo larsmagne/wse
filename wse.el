@@ -39,6 +39,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; Internal variables.
 (defvar wse--db nil)
 (defvar wse--filling-country nil)
+(defvar wse--timer nil)
 
 (defun wse ()
   "Display Wordpress statistics."
@@ -46,10 +47,12 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (switch-to-buffer "*WSE*")
   (wse--render))
 
-(defun wse-update ()
+(defun wse-update-automatically ()
   "Update *WSE* automatically periodically."
   (interactive)
-  (run-at-time 60 (* 60 5) #'wse--update))
+  (when wse--timer
+    (cancel-timer wse-timer))
+  (setq wse--timer (run-at-time 60 (* 60 5) #'wse--update)))
 
 ;; This is a separate function instead of a lambda so that it's easier
 ;; to find in `M-x list-timers'.
@@ -908,4 +911,3 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;; check history summary
 ;; Rewrite Search detect
-;; Rename update auto function and ensure only runs one copy.
