@@ -95,7 +95,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun bang--time (time)
   (format-time-string "%Y-%m-%d %H:%M:%S" time))
 
-(defun bang--now ()
+(defun bang--24h ()
   (bang--time (- (time-convert (current-time) 'integer)
 		 (* 60 60 24))))
 
@@ -282,12 +282,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun bang--possibly-summarize-history ()
   (let ((max (caar (bang-sel "select max(date) from history"))))
     (when (or (not max)
-	      (string< max (substring (bang--now) 0 10)))
+	      (string< max (substring (bang--time (current-time)) 0 10)))
       (bang--summarize-history))))
 
 (defun bang--summarize-history ()
   (dolist (blog bang-blogs)
-    (cl-loop with max-date = (caar (bang-sel "select date from views where blog = ? order by id desc limit 1"
+    (cl-loop with max-date = (caar (bang-sel "select max(date) from views where blog = ?"
 					     blog))
 	     for (date views visitors) in
 	     (bang-sel "select date, count(date), count(distinct ip) from views where date < ? and blog = ? group by date order by date"
@@ -356,6 +356,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   :parent button-map
   "g" #'bang-revert
   "d" #'bang-view-date
+  "q" #'bury-buffer
   "v" #'bang-view-details)
 
 (defun bang-revert (&optional silent)
@@ -421,7 +422,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(:name "Country")
 		(:name "User-Agent"))
      :objects (bang-sel "select time, ip, referrer, country, user_agent from views where time > ? and page = ? order by time"
-			(bang--now) url)
+			(bang--24h) url)
      :getter
      (lambda (elem column _vtable)
        (elt elem column))
@@ -441,7 +442,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :objects (apply #'bang-sel
 		     (format "select time, referrer, page from referrers where time > ? and referrer in (%s) order by time"
 			     (mapconcat (lambda (_) "?") urls ","))
-		     (bang--now) urls)
+		     (bang--24h) urls)
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Page")
@@ -535,7 +536,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (insert "\n")))
 
 (defun bang--get-page-table-data ()
-  (let* ((time (bang--now))
+  (let* ((time (bang--24h))
 	 (pages
 	  (bang-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
 		    time bang-entries))
@@ -570,7 +571,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
        (buttonize "Total Referrers" #'bang--view-total-referrers))))))
 
 (defun bang--get-click-table-data ()
-  (let* ((time (bang--now))
+  (let* ((time (bang--24h))
 	 (clicks
 	  (bang-sel "select count(domain), domain, count(distinct click), click from clicks where time > ? group by domain order by count(domain) desc limit ?"
 		    time bang-entries))
@@ -652,7 +653,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :columns '((:name "" :align 'right)
 		(:name "Clicks"))
      :objects (bang-sel "select count(click), click from clicks where time > ? and domain = ? group by click order by count(click) desc"
-			(bang--now) domain)
+			(bang--24h) domain)
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Clicks")
@@ -664,7 +665,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (unless date
     (switch-to-buffer "*Total Bang*"))
   (let ((inhibit-read-only t)
-	(from (bang--now))
+	(from (bang--24h))
 	(to (bang--future)))
     (if date
 	(setq from (concat date " 00:00:00")
@@ -691,7 +692,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (unless date
     (switch-to-buffer "*Total Bang*"))
   (let ((inhibit-read-only t)
-	(from (bang--now))
+	(from (bang--24h))
 	(to (bang--future)))
     (if date
 	(setq from (concat date " 00:00:00")
@@ -717,7 +718,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (unless date
     (switch-to-buffer "*Total Bang*"))
   (let ((inhibit-read-only t)
-	(from (bang--now))
+	(from (bang--24h))
 	(to (bang--future)))
     (if date
 	(setq from (concat date " 00:00:00")
@@ -742,7 +743,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (unless date
     (switch-to-buffer "*Total Bang*"))
   (let ((inhibit-read-only t)
-	(from (bang--now))
+	(from (bang--24h))
 	(to (bang--future)))
     (if date
 	(setq from (concat date " 00:00:00")
@@ -809,13 +810,15 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (if summarize "Search" "Brave"))
    ((string-match-p "\\b[.]?baidu[.]com/" url)
     (if summarize "Search" "Baidu"))
+   ((string-match-p "\\b[.]?presearch[.]com/" url)
+    (if summarize "Search" "Presearch"))
    ((string-match-p "[a-z]+[.]wikipedia[.]org/\\'" url)
     "Wikipedia")
    ((string-match-p "search[.]yahoo[.]com/\\'" url)
     (if summarize "Search" "Brave"))
    ((string-match-p "\\bduckduckgo[.]com/\\'" url)
     (if summarize "Search" "DuckDuckGo"))
-   ((string-match-p "\\byandex[.]ru/" url)
+   ((string-match-p "\\byandex[.]ru/\\|\\bya.ru/" url)
     (if summarize "Search" "Yandex"))
    ((string-match-p "\\b[.]qwant[.]com/\\'" url)
     (if summarize "Search" "Qwant"))
@@ -843,7 +846,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun bang--plot-blogs-today ()
   (let ((data 
 	 (bang-sel "select blog, count(blog), count(distinct ip) from views where time > ? group by blog order by blog"
-		   (bang--now))))
+		   (bang--24h))))
     (insert-image
      (svg-image
       (eplot-make-plot
@@ -871,7 +874,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun bang--plot-history ()
   (let ((data (bang-sel "select date, sum(views), sum(visitors) from history group by date order by date limit 14"))
 	(today (car (bang-sel "select count(*), count(distinct ip) from views where time > ?"
-			      (bang--now))))
+			      (bang--24h))))
 	(current (car (bang-sel "select count(*), count(distinct ip) from views where time > ?"
 				(format-time-string "%Y-%m-%d 00:00:00")))))
     (insert-image
@@ -902,3 +905,6 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (provide 'bang)
 
 ;;; bang.el ends here
+;; rename to wse
+;; check history summary
+;; Rewrite Search detect
