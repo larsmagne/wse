@@ -706,7 +706,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Posts & Pages")
 	   (buttonize (wse--pretty-url (elt elem column))
-		      #'wse--browse (elt elem 2) (elt elem 2))
+		      #'wse--browse (elt elem 3) (elt elem 3))
 	 (elt elem column)))
      :keymap wse-mode-map)))
 
@@ -944,3 +944,4 @@ I.e., \"google.com\" or \"google.co.uk\"."
 ;; check history summary
 ;; Drop views for the same page from the same IP?
 ;; Display update time in header
+;; Do the same trick in Posts & Pages with URLs
