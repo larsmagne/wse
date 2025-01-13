@@ -347,7 +347,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;; Modes and command for modes.
 
-(define-derived-mode wse-mode special-mode "Wse"
+(define-derived-mode wse-mode special-mode "WSE"
   "Major mode for listing Wordpress statistics."
   :interactive nil
   (setq truncate-lines t))
@@ -663,7 +663,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--view-total-views (_ &optional date)
   (unless date
-    (switch-to-buffer "*Total Wse*"))
+    (switch-to-buffer "*Total WSE*"))
   (let ((inhibit-read-only t)
 	(from (wse--24h))
 	(to (wse--future)))
@@ -690,7 +690,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--view-total-referrers (_ &optional date)
   (unless date
-    (switch-to-buffer "*Total Wse*"))
+    (switch-to-buffer "*Total WSE*"))
   (let ((inhibit-read-only t)
 	(from (wse--24h))
 	(to (wse--future)))
@@ -716,7 +716,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--view-total-clicks (_ &optional date)
   (unless date
-    (switch-to-buffer "*Total Wse*"))
+    (switch-to-buffer "*Total WSE*"))
   (let ((inhibit-read-only t)
 	(from (wse--24h))
 	(to (wse--future)))
@@ -741,7 +741,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--view-total-countries (_ &optional date)
   (unless date
-    (switch-to-buffer "*Total Wse*"))
+    (switch-to-buffer "*Total WSE*"))
   (let ((inhibit-read-only t)
 	(from (wse--24h))
 	(to (wse--future)))
@@ -905,7 +905,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (provide 'wse)
 
 ;;; wse.el ends here
-;; rename to wse
+
 ;; check history summary
 ;; Rewrite Search detect
 ;; Rename update auto function and ensure only runs one copy.
