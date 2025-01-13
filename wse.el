@@ -51,7 +51,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   "Update *WSE* automatically periodically."
   (interactive)
   (when wse--timer
-    (cancel-timer wse-timer))
+    (cancel-timer wse--timer))
   (setq wse--timer (run-at-time 60 (* 60 5) #'wse--update)))
 
 ;; This is a separate function instead of a lambda so that it's easier
@@ -799,50 +799,61 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	    (seq-take list wse-entries)
 	  list)))))
 
+(defvar wse--search-engines
+  '("Bing"
+    "Google"
+    "Baidu"
+    "Presearch"
+    "Yahoo"
+    "DuckDuckGo"
+    "Yandex"
+    ("ya" "Yandex")
+    "Qwant"
+    "Kagi"
+    "Ecosia"
+    ("brave" "Brave" "search.brave.com")
+    ("yahoo" "yahoo" "search.yahoo.com")))
+
+(defun wse--search-p (entity host)
+  (cl-loop for elem in wse--search-engines
+	   for name = (if (consp elem)
+			  (cadr elem)
+			elem)
+	   for bit = (if (consp elem)
+			  (car elem)
+			(downcase elem))
+	   when (or (equal entity bit)
+		    (and (consp elem)
+			 (equal host (nth 2 elem))))
+	   return name))
+
 (defun wse--transform-referrer (url &optional summarize)
-  (cond
-   ((string-match-p "[.]bing[.][a-z]+/\\'" url)
-    (if summarize "Search" "Bing"))
-   ((string-match-p "[.]google[.][.a-z]+[/]?\\'" url)
-    (if summarize "Search" "Google"))
-   ((string-match-p "[.]reddit[.]com/\\'" url)
-    "Reddit")
-   ((string-match-p "[.]?bsky[.]app/\\'" url)
-    "Bluesky")
-   ((string-match-p "search[.]brave[.]com/\\'" url)
-    (if summarize "Search" "Brave"))
-   ((string-match-p "\\b[.]?baidu[.]com/" url)
-    (if summarize "Search" "Baidu"))
-   ((string-match-p "\\b[.]?presearch[.]com/" url)
-    (if summarize "Search" "Presearch"))
-   ((string-match-p "[a-z]+[.]wikipedia[.]org/\\'" url)
-    "Wikipedia")
-   ((string-match-p "search[.]yahoo[.]com/\\'" url)
-    (if summarize "Search" "Brave"))
-   ((string-match-p "\\bduckduckgo[.]com/\\'" url)
-    (if summarize "Search" "DuckDuckGo"))
-   ((string-match-p "\\byandex[.]ru/\\|\\bya.ru/" url)
-    (if summarize "Search" "Yandex"))
-   ((string-match-p "\\b[.]qwant[.]com/\\'" url)
-    (if summarize "Search" "Qwant"))
-   ((string-match-p "\\b[.]?kagi[.]com/\\'" url)
-    (if summarize "Search" "Kagi"))
-   ((string-match-p "\\b[.]ecosia[.]org/\\'" url)
-    (if summarize "Search" "Ecosia"))
-   ((and summarize (string-match-p "\\byandex[.]ru/" url))
-    "Search")
-   ((and summarize (string-match-p "\\ampproject[.]org/" url))
-    "Amp")
-   ((equal (wse--host url) "t.co")
-    "Twitter")
-   ((equal (wse--get-domain (wse--host url)) "facebook.com")
-    "Facebook")
-   ((and summarize (member (wse--host url) wse-blogs))
-    "Interblog")
-   (summarize
-    (concat "-" (wse--get-domain (wse--host url))))
-   (t
-    url)))
+  (let* ((domain (wse--get-domain (bang--host url)))
+	 (entity (downcase (car (split-string domain "[.]"))))
+	 (search (wse--search-p entity (bang--host url))))
+    (if search
+	(if summarize
+	    "Search"
+	  search)
+      (cond
+       ((string-match-p "[.]reddit[.]com/\\'" url)
+	"Reddit")
+       ((string-match-p "[.]?bsky[.]app/\\'" url)
+	"Bluesky")
+       ((string-match-p "[a-z]+[.]wikipedia[.]org/\\'" url)
+	"Wikipedia")
+       ((and summarize (string-match-p "\\ampproject[.]org/" url))
+	"Amp")
+       ((equal (wse--host url) "t.co")
+	"Twitter")
+       ((equal (wse--get-domain (wse--host url)) "facebook.com")
+	"Facebook")
+       ((and summarize (member (wse--host url) wse-blogs))
+	"Interblog")
+       (summarize
+	(concat "-" (wse--get-domain (wse--host url))))
+       (t
+	url)))))
 
 ;; Plots.
 
@@ -910,4 +921,3 @@ I.e., \"google.com\" or \"google.co.uk\"."
 ;;; wse.el ends here
 
 ;; check history summary
-;; Rewrite Search detect
