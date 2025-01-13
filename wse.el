@@ -922,4 +922,3 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;; check history summary
 ;; Drop views for the same page from the same IP?
-;; Record when paging down front page.
