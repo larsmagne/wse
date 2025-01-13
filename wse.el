@@ -43,11 +43,11 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun wse ()
   "Display Wordpress statistics."
   (interactive)
-  (switch-to-buffer "*Wse*")
+  (switch-to-buffer "*WSE*")
   (wse--render))
 
 (defun wse-update ()
-  "Update *Wse* automatically periodically."
+  "Update *WSE* automatically periodically."
   (interactive)
   (run-at-time 60 (* 60 5) #'wse--update))
 
@@ -55,7 +55,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; to find in `M-x list-timers'.
 (defun wse--update ()
   (when-let ((idle (current-idle-time))
-	     (buffer (get-buffer "*Wse*")))
+	     (buffer (get-buffer "*WSE*")))
     (when (> (time-convert (time-since idle) 'integer) 20)
       (with-current-buffer buffer
 	(wse-revert t)))))
@@ -379,7 +379,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	  "Date to show: "
 	  (mapcar #'car (wse-sel "select distinct date from history order by date"))))
    wse-mode)
-  (switch-to-buffer "*Wse Date*")
+  (switch-to-buffer "*WSE Date*")
   (let ((inhibit-read-only t))
     (erase-buffer)
     (special-mode)
@@ -409,7 +409,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(wse--view-referrer-details urls))))))
 
 (defun wse--view-page-details (url)
-  (switch-to-buffer "*Wse Details*")
+  (switch-to-buffer "*WSE Details*")
   (let ((inhibit-read-only t))
     (erase-buffer)
     (special-mode)
@@ -429,7 +429,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :keymap wse-mode-map)))
 
 (defun wse--view-referrer-details (urls)
-  (switch-to-buffer "*Wse Details*")
+  (switch-to-buffer "*WSE Details*")
   (let ((inhibit-read-only t))
     (erase-buffer)
     (special-mode)
