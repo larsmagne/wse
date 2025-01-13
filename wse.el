@@ -921,3 +921,5 @@ I.e., \"google.com\" or \"google.co.uk\"."
 ;;; wse.el ends here
 
 ;; check history summary
+;; Drop views for the same page from the same IP?
+;; Record when paging down front page.
