@@ -544,6 +544,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(results nil))
     (cl-loop for (count title url) in data
 	     for page = (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url)
+	     when (string= (url-filename (url-generic-parse-url page))
+			   "/")
+	     do (setq page "/"
+		      title "Home Page")
 	     do (cl-incf (gethash page counts 0) count)
 	     (setf (gethash page titles) title))
     (maphash (lambda (page count)
