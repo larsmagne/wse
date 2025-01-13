@@ -10,10 +10,10 @@ Find the Wordpress plugin directory.  It's usually something like
 
     /var/www/wp-content/plugins/
   
-Create a directory called "bang" under that, and copy over all the
+Create a directory called "wse" under that, and copy over all the
 .php and .js files there.
 
-Edit the bang/password.php file and insert a password that will be
+Edit the wse/password.php file and insert a password that will be
 used to poll the data.  Don't use the "real" Wordpress password, but
 just something nice and long and secret.
 
@@ -30,11 +30,11 @@ stuff), and also requires the eplot library, which can be found here:
 	
 Then you need the following in your init file:
 
-    (setq bang-blogs '("example.com" "zot.com"))
+    (setq wse-blogs '("example.com" "zot.com"))
 	
 Or wherever your blogs live.
 
-Then ideally you should be able to say "M-x bang" and everything
+Then ideally you should be able to say "M-x wse" and everything
 should work, but er I wouldn't get my hopes up until the code has been
 cleaned up some more.
 
