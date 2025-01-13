@@ -1,19 +1,19 @@
 <?php
 /*
-Plugin Name: Bang
+Plugin Name: WSE
 Description: Collect usage statistics.
 */
 
-function add_bang_js() {
-  wp_enqueue_script("bang", "/wp-content/plugins/bang/bang.js");
+function add_wse_js() {
+  wp_enqueue_script("wse", "/wp-content/plugins/wse/wse.js");
 }
 
-add_action("wp_enqueue_scripts", "add_bang_js");
+add_action("wp_enqueue_scripts", "add_wse_js");
 
 // Function run when the plugin is activated.
-function bang_create_database_table() {
+function wse_create_database_table() {
   global $wpdb;
-  $table_name = $wpdb->prefix . 'bang_stats';
+  $table_name = $wpdb->prefix . 'wse_stats';
   $charset_collate = $wpdb->get_charset_collate();
 
   $sql = "CREATE TABLE $table_name (
@@ -33,11 +33,11 @@ function bang_create_database_table() {
 }
 
 // Function run when the plugin is deactivated.
-function bang_delete_table() {
+function wse_delete_table() {
   global $wpdb;
-  $table_name = $wpdb->prefix . 'bang_stats';
+  $table_name = $wpdb->prefix . 'wse_stats';
   $wpdb->query("DROP TABLE IF EXISTS $table_name");
 }
 
-register_activation_hook(__FILE__, 'bang_create_database_table');
-register_deactivation_hook(__FILE__, 'bang_delete_table');
+register_activation_hook(__FILE__, 'wse_create_database_table');
+register_deactivation_hook(__FILE__, 'wse_delete_table');

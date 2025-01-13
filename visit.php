@@ -10,7 +10,7 @@ header("Content-type: application/json; charset=utf-8");
 header("Cache-Control: no-cache, no-store, must-revalidate");
 
 global $wpdb;
-$table_name = $wpdb->prefix . 'bang_stats';
+$table_name = $wpdb->prefix . 'wse_stats';
 
 $click = @$_REQUEST["click"];
 $referrer = @$_REQUEST["ref"];

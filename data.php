@@ -12,11 +12,11 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 // Check that the password is correct.
 require_once(dirname(__FILE__) . '/password.php');
 $password = @$_REQUEST["password"];
-if ($password != bang_password())
+if ($password != wse_password())
   return;
 
 global $wpdb;
-$table_name = $wpdb->prefix . 'bang_stats';
+$table_name = $wpdb->prefix . 'wse_stats';
 
 $from_id = @$_REQUEST["from_id"];
 if (! $from_id)
