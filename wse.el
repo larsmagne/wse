@@ -522,21 +522,24 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (elt elem column))))
      :keymap wse-mode-map)
 
-    (goto-char (point-max))
-    (insert "\n")
-    (make-vtable
-     :face 'wse
-     :use-header-line nil
-     :columns '((:name "Last Update"))
-     :objects (list (message-make-date))
-     :keymap wse-mode-map)
+    (let* ((date (propertize
+		  (let ((system-time-locale "C"))
+		    (format-time-string "%a, %d %b %Y %T" (current-time)))
+		  'face 'wse))
+	   (dwidth (string-pixel-width date)))
+      (setq header-line-format
+	    (concat
+	     (propertize " " 'display
+			 (list 'space :width (list (- (window-width nil t)
+						      dwidth))))
+	     date)))
 
     (goto-char (point-min))
     (insert "\n")
     (goto-char (point-min))
     (wse--plot-history)
     (wse--plot-blogs-today)
-    (insert "\n")))
+    (forward-line 1)))
 
 (defun wse--transform-pages (data)
   (let ((counts (make-hash-table :test #'equal))
@@ -943,5 +946,4 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;; check history summary
 ;; Drop views for the same page from the same IP?
-;; Display update time in header
 ;; Do the same trick in Posts & Pages with URLs
