@@ -850,6 +850,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	"Facebook")
        ((and summarize (member (wse--host url) wse-blogs))
 	"Interblog")
+       ((string-match-p "\\bstatics.teams.cdn.office.net/\\'" url)
+	"Microsoft Teams")
        (summarize
 	(concat "-" (wse--get-domain (wse--host url))))
        (t
