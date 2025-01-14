@@ -137,6 +137,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun wse-exec (statement &rest args)
   (sqlite-execute wse--db statement args))
 
+(defun wse--in (list)
+  (mapconcat (lambda (_) "?") list ","))
+
 ;; Update data.
 
 (defun wse--poll-blogs (&optional callback)
@@ -451,7 +454,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :objects (apply
 	       #'wse-sel
 	       (format "select time, ip, referrer, country, user_agent from views where time > ? and page in (%s) order by time"
-		       (mapconcat (lambda (_) "?") urls ","))
+		       (wse--in urls))
 	       (wse--24h) urls)
      :getter
      (lambda (elem column _vtable)
@@ -471,7 +474,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(:name "Page"))
      :objects (apply #'wse-sel
 		     (format "select time, referrer, page from referrers where time > ? and referrer in (%s) order by time"
-			     (mapconcat (lambda (_) "?") urls ","))
+			     (wse--in url))
 		     (wse--24h) urls)
      :getter
      (lambda (elem column vtable)
@@ -636,11 +639,28 @@ I.e., \"google.com\" or \"google.co.uk\"."
        (caar (wse-sel "select count(*) from referrers where time > ?" time))
        (buttonize "Total Referrers" #'wse--view-total-referrers))))))
 
+(defun wse--add-media-clicks (clicks)
+  (nreverse
+   (sort (cons
+	  (list (caar (apply
+		       #'wse-sel
+		       (format "select count(*) from clicks where time > ? and domain in (%s)"
+			       (wse--in wse-blogs))
+		       (wse--24h) wse-blogs))
+		(concat
+		 "🔽 " (buttonize "Media" #'wse--view-clicks wse-blogs)))
+	  clicks)
+	 #'car-less-than-car)))
+
 (defun wse--get-click-table-data ()
   (let* ((time (wse--24h))
 	 (clicks
-	  (wse-sel "select count(domain), domain, count(distinct click), click from clicks where time > ? group by domain order by count(domain) desc limit ?"
-		   time wse-entries))
+	  (wse--add-media-clicks
+	   (apply
+	    #'wse-sel
+	    (format "select count(domain), domain, count(distinct click), click from clicks where time > ? and domain not in (%s) group by domain order by count(domain) desc limit ?"
+		    (wse--in wse-blogs))
+	    `(,time ,@wse-blogs ,wse-entries))))
 	 (countries
 	  (wse-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit ?"
 		   time wse-entries)))
@@ -648,16 +668,22 @@ I.e., \"google.com\" or \"google.co.uk\"."
      (cl-loop for i from 0 upto (1- wse-entries)
 	      for click = (elt clicks i)
 	      collect
-	      (append (if click
-			  (list (car click)
-				(if (= (nth 2 click) 1)
-				    (nth 3 click)
-				  (buttonize
-				   (concat "🔽 " (cadr click))
+	      (append
+	       (if click
+		   (list (car click)
+			 (cond
+			  ((not (nth 2 click))
+			   (nth 1 click))
+			  ((= (nth 2 click) 1)
+			   (nth 3 click))
+			  (t
+			   (concat
+			    "🔽 " (buttonize
+				   (cadr click)
 				   (lambda (domain)
 				     (wse--view-clicks domain))
-				   (cadr click))))
-			(list "" ""))
+				   (cadr click))))))
+		 (list "" ""))
 		      (or (elt countries i) (list "" ""))))
     
      (list
@@ -708,7 +734,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	  (dolist (url urls)
 	    (browse-url url)))))))
 
-(defun wse--view-clicks (domain)
+(defun wse--view-clicks (domains)
+  (unless (listp domains)
+    (setq domains (list domains)))
   (switch-to-buffer "*Clicks*")
   (wse-clicks-mode)
   (let ((inhibit-read-only t))
@@ -718,8 +746,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :face 'wse
      :columns '((:name "" :align 'right)
 		(:name "Clicks"))
-     :objects (wse-sel "select count(click), click from clicks where time > ? and domain = ? group by click order by count(click) desc"
-		       (wse--24h) domain)
+     :objects (apply
+	       #'wse-sel
+	       (format "select count(click), click from clicks where time > ? and domain in (%s) group by click order by count(click) desc"
+		       (wse--in domains))
+	       (wse--24h) domains)
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Clicks")
@@ -985,6 +1016,5 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;;; wse.el ends here
 
-;; Add a "media" clicks category
 ;; Don't record clicks to own domains
 ;; Sort things more stably
