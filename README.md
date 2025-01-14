@@ -9,7 +9,7 @@ Find the Wordpress plugin directory.  It's usually something like
     /var/www/wp-content/plugins/
   
 Create a directory called "wse" under that, and copy over all the
-.php and .js files there.
+.php and .js files into that directory.
 
 Edit the wse/password.php file and insert a password that will be
 used to poll the data.  Don't use the "real" Wordpress password, but
