@@ -107,8 +107,11 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun wse--convert-time (time)
   "Convert TIME from GMT/Z/UTC to local time."
-  (wse--time
-   (encode-time (iso8601-parse (concat (string-replace " " "T" time) "Z")))))
+  (wse--time (wse--parse-time time)))
+
+(defun wse--parse-time (time)
+  "Convert TIME from GMT/Z/UTC to local time."
+  (encode-time (iso8601-parse (concat (string-replace " " "T" time) "Z"))))
 
 (defun wse--browse (url)
   (let ((browse-url-browser-function
@@ -178,12 +181,31 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	       nil t))))
     (funcall func)))      
 
+(defvar wse--rate-limit-table (make-hash-table :test #'equal))
+
+(defun wse--rate-limit (time ip click page)
+  (let* ((is-click (not (zerop (length click))))
+	 (url (if is-click click page))
+	 (prev (gethash (list is-click ip url) wse--rate-limit-table)))
+    (cond
+     ((not prev)
+      (setf (gethash (list is-click ip url) wse--rate-limit-table) time)
+      nil)
+     ;; If less than an hour, rate limit.
+     ((< (- (time-convert (wse--parse-time time) 'integer)
+	    (time-convert (wse--parse-time prev) 'integer))
+	 (* 60 60))
+      t)
+     (t
+      nil))))
+
 (defun wse--update-data (data &optional callback)
   (cl-loop for (blog . elems) in data
 	   do (cl-loop for elem across (gethash "data" elems)
 		       for (id time click page referrer ip user-agent title) =
 		       (cl-coerce elem 'list)
-		       unless (wse--bot-p user-agent)
+		       when (and (not (wse--bot-p user-agent))
+				 (not (wse--rate-limit time ip click page)))
 		       do
 		       (wse--insert-data blog (wse--convert-time time)
 					 click page referrer ip
@@ -963,7 +985,6 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;;; wse.el ends here
 
-;; Drop views for the same page from the same IP?
 ;; Add a "media" clicks category
 ;; Don't record clicks to own domains
 ;; Sort things more stably
