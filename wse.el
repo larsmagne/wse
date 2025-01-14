@@ -474,7 +474,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(:name "Page"))
      :objects (apply #'wse-sel
 		     (format "select time, referrer, page from referrers where time > ? and referrer in (%s) order by time"
-			     (wse--in url))
+			     (wse--in urls))
 		     (wse--24h) urls)
      :getter
      (lambda (elem column vtable)
