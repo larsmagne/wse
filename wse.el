@@ -923,9 +923,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   return name))
 
 (defun wse--transform-referrer (url &optional summarize)
-  (let* ((domain (wse--get-domain (bang--host url)))
+  (let* ((domain (wse--get-domain (wse--host url)))
 	 (entity (downcase (car (split-string domain "[.]"))))
-	 (search (wse--search-p entity (bang--host url))))
+	 (search (wse--search-p entity (wse--host url))))
     (if search
 	(if summarize
 	    "Search"
