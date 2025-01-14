@@ -564,7 +564,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (goto-char (point-min))
     (wse--plot-history)
     (wse--plot-blogs-today)
-    (forward-line 1)))
+    (forward-line 2)))
 
 (defun wse--transform-pages (data)
   (let ((counts (make-hash-table :test #'equal))
