@@ -1,8 +1,6 @@
 This is a Wordpress plugin for gathering visitor statistics, as well
 as an Emacs package for displaying the information.
 
-It's a work in progress -- caveat emptor.
-
 Installation Instructions
 =========================
 
