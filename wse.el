@@ -262,7 +262,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (if (wse--url-p click)
 	;; Register a click if it's not going to the current blog, or
 	;; whether it's going to a media URL of some kind (image/mp4/etc).
-	(when (or (not (equal (wse--host click) blog))
+	(when (or (not (member (wse--host click) wse-blogs))
 		  (string-match "/wp-contents/uploads/" click)
 		  (wse--media-p click))
 	  (wse-exec
@@ -1016,5 +1016,4 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;;; wse.el ends here
 
-;; Don't record clicks to own domains
 ;; Sort things more stably
