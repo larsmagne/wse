@@ -78,7 +78,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
        (string-match-p "\\`[a-z]+:" string)))
 
 (defun wse--media-p (click)
-  (string-match "[.]\\(mp4\\|png\\|jpg\\|jpeg\\|webp\\|webp\\)\\'" click))
+  (string-match "[.]\\(mp4\\|png\\|jpg\\|jpeg\\|webp\\|webp\\|gif\\)\\'" click))
 
 (defun wse--countrify (code name)
   (if (= (length code) 2)
@@ -411,7 +411,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
       (when (listp urls)
 	(wse--view-referrer-details urls))))))
 
-(defun wse--view-page-details (url)
+(defun wse--view-page-details (urls)
+  (when (stringp urls)
+    (setq urls (list urls)))
   (switch-to-buffer "*WSE Details*")
   (let ((inhibit-read-only t))
     (erase-buffer)
@@ -424,8 +426,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(:name "Referrer" :max-width 40)
 		(:name "Country")
 		(:name "User-Agent"))
-     :objects (wse-sel "select time, ip, referrer, country, user_agent from views where time > ? and page = ? order by time"
-		       (wse--24h) url)
+     :objects (apply
+	       #'wse-sel
+	       (format "select time, ip, referrer, country, user_agent from views where time > ? and page in (%s) order by time"
+		       (mapconcat (lambda (_) "?") urls ","))
+	       (wse--24h) urls)
      :getter
      (lambda (elem column _vtable)
        (elt elem column))
@@ -466,11 +471,6 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(:name "" :align 'right :min-width "70px")
 		(:name "Referrers" :width 45))
      :objects (wse--get-page-table-data)
-     :getter
-     (lambda (elem column vtable)
-       (if (equal (vtable-column vtable column) "Referrers")
-	   (wse--possibly-buttonize (elt elem column))
-	 (elt elem column)))
      :keymap wse-mode-map)
 
     (goto-char (point-max))
@@ -544,18 +544,28 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun wse--transform-pages (data)
   (let ((counts (make-hash-table :test #'equal))
 	(titles (make-hash-table :test #'equal))
+	(urls (make-hash-table :test #'equal))
 	(results nil))
     (cl-loop for (count title url) in data
 	     for page = (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url)
 	     when (string= (url-filename (url-generic-parse-url page))
 			   "/")
-	     do (setq page "/"
-		      title "Home Page")
-	     do (cl-incf (gethash page counts 0) count)
+	     do
+	     (cl-pushnew page (gethash "/" urls nil) :test #'equal)
+	     (setq page "/"
+		   title "Home Page")
+	     do
+	     (cl-incf (gethash page counts 0) count)
 	     (setf (gethash page titles) title))
     (maphash (lambda (page count)
-	       (push (list count (gethash page titles) page)
-		     results))
+	       (let ((title (gethash page titles))
+		     (urls (gethash page urls)))
+		 (when urls
+		   (setq title
+			 (concat "🔽 "
+				 (buttonize title
+					    #'wse--view-page-details urls))))
+		 (push (list count title page) results)))
 	     counts)
     (seq-take (nreverse (sort results #'car-less-than-car)) wse-entries)))
 
@@ -573,21 +583,30 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (nconc
      (cl-loop for i from 0 upto (1- wse-entries)
 	      for page = (elt pages i)
+	      for referrer = (elt referrers i)
+	      for title = (nth 1 page)
 	      collect
-	      (append (if page
-			  (list (nth 0 page)
-				(buttonize
-				 (cond
-				  ((wse--url-p (nth 1 page))
-				   (wse--pretty-url (nth 1 page)))
-				  ((zerop (length (nth 1 page)))
-				   (wse--pretty-url (nth 2 page)))
-				  (t
-				   (nth 1 page)))
-				 #'wse--browse (elt page 2)
-				 (elt page 2)))
-			(list "" ""))
-		      (or (elt referrers i) (list "" ""))))
+	      (append
+	       (if page
+		   (list (nth 0 page)
+			 (if (and (> (length title) 3)
+				  (get-text-property 3 'button title))
+			     title
+			   (buttonize
+			    (cond
+			     ((wse--url-p title)
+			      (wse--pretty-url title))
+			     ((zerop (length title))
+			      (wse--pretty-url (nth 2 page)))
+			     (t
+			      title))
+			    #'wse--browse (elt page 2)
+			    (elt page 2))))
+		 (list "" ""))
+	       (if referrer
+		   (list (car referrer)
+			 (wse--possibly-buttonize (cadr referrer)))
+		 (list "" ""))))
      (list
       (list
        (caar (wse-sel "select count(*) from views where time > ?" time))
@@ -944,6 +963,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;;; wse.el ends here
 
-;; check history summary
 ;; Drop views for the same page from the same IP?
-;; Do the same trick in Posts & Pages with URLs
+;; Add a "media" clicks category
+;; Don't record clicks to own domains
+;; Sort things more stably
