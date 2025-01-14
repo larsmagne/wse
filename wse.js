@@ -44,6 +44,7 @@ document.addEventListener(
 	  this.setAttribute("data-wse", "true");
 	  link = $source.attr("src");
 	  jQuery(this).on("playing", function() {
+	    jQuery(this).off("playing");
 	    var link;
 	    var $source = jQuery(this).find("source");
 	    if ($source.length == 1) {
