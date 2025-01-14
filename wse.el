@@ -541,8 +541,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	((equal (vtable-column vtable column) "Comment")
 	 (let ((url (format "https://%s/?p=%d"
 			    (elt elem 0) (elt elem 4))))
-	   (buttonize (elt elem column) #'wse--browse
-		      url url)))
+	   (buttonize (string-replace "\n" " " (elt elem column))
+		      #'wse--browse url url)))
 	(t
 	 (elt elem column))))
      :keymap wse-mode-map)
