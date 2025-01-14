@@ -562,9 +562,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (goto-char (point-min))
     (insert "\n")
     (goto-char (point-min))
+    ;; We want to be able to put point somewhere unobtrusive.
+    (insert (propertize " " 'display '(space :width (1))))
     (wse--plot-history)
     (wse--plot-blogs-today)
-    (forward-line 2)))
+    (goto-char (point-min))))
 
 (defun wse--transform-pages (data)
   (let ((counts (make-hash-table :test #'equal))
