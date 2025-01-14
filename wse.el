@@ -630,7 +630,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		 (list "" ""))
 	       (if referrer
 		   (list (car referrer)
-			 (wse--possibly-buttonize (cadr referrer)))
+			 (wse--possibly-buttonize (cadr referrer))
+			 (nth 2 referrer))
 		 (list "" ""))))
      (list
       (list
