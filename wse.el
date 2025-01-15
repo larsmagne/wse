@@ -140,6 +140,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun wse--in (list)
   (mapconcat (lambda (_) "?") list ","))
 
+(defun wse--weekend-p (date)
+  (memq
+   (decoded-time-weekday
+    (decode-time (encode-time (decoded-time-set-defaults
+			       (iso8601-parse-date date)))))
+   '(0 6)))
+
 ;; Update data.
 
 (defun wse--poll-blogs (&optional callback)
@@ -236,7 +243,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (wse-exec "create table if not exists blogs (blog text primary key, last_id integer, last_comment_id integer)")
 
     ;; Statistics.
-    (wse-exec "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text, referrer text)")
+    (wse-exec "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text, referrer text, browser text, os text, type text)")
     (wse-exec "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
     (wse-exec "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
 
@@ -527,6 +534,20 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (make-vtable
      :face 'wse
      :use-header-line nil
+     :columns '((:name "" :align 'right :min-width "70px")
+		(:name "Browser" :width "350px")
+		(:name "" :align 'right :min-width "70px")
+		(:name "OS" :width "350px")
+		(:name "" :align 'right :min-width "70px")
+		(:name "Device" :width "350px"))
+     :objects (wse--get-browser-table-data)
+     :keymap wse-mode-map)
+
+    (goto-char (point-max))
+    (insert "\n")
+    (make-vtable
+     :face 'wse
+     :use-header-line nil
      :columns '((:name "Blog" :max-width 20)
 		(:name "Status")
 		(:name "Author")
@@ -570,6 +591,39 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (wse--plot-history)
     (wse--plot-blogs-today)
     (goto-char (point-min))))
+
+(defun wse--get-browser-table-data ()
+  (let ((browsers (wse-sel "select count(browser), browser from views where time > ? group by browser order by count(browser) desc limit ?"
+			   (wse--24h) wse-entries))
+	(oses (wse-sel "select count(os), os from views where time > ? group by os order by count(os) desc limit ?"
+		       (wse--24h) wse-entries))
+	(types (wse-sel "select count(type), type from views where time > ? group by type order by count(type) desc limit ?"
+			(wse--24h) wse-entries)))
+    (cl-loop for i from 0 upto (1- wse-entries)
+	     when (or (wse--filter-zero (elt browsers i))
+		      (wse--filter-zero (elt oses i))
+		      (wse--filter-zero (elt types i)))
+	     collect (append (or (wse--filter-zero (elt browsers i)) '("" ""))
+			     (or (wse--filter-zero (elt oses i)) '("" ""))
+			     (let ((type (elt types i)))
+			       (if (and type
+					(not (equal (car type) 0)))
+				   (list (car type)
+					 (cond
+					  ((equal (cadr type) "N")
+					   "Desktop")
+					  ((equal (cadr type) "T")
+					   "Tablet")
+					  ((equal (cadr type) "M")
+					   "Mobile")
+					  (t
+					   (cadr type))))
+				 (or  '("" ""))))))))
+
+(defun wse--filter-zero (elem)
+  (if (equal (car elem) 0)
+      nil
+    elem))
 
 (defun wse--transform-pages (data)
   (let ((counts (make-hash-table :test #'equal))
@@ -936,8 +990,6 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	    "Search"
 	  search)
       (cond
-       ((string-match-p "[.]reddit[.]com/\\'" url)
-	"Reddit")
        ((string-match-p "[.]pinterest[.]com/\\'" url)
 	"Pinterest")
        ((string-match-p "[.]?bsky[.][a-z]+/\\'" url)
@@ -1029,12 +1081,36 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	      "bold"
 	    "normal")))
 
-(defun wse--weekend-p (date)
-  (memq
-   (decoded-time-weekday
-    (decode-time (encode-time (decoded-time-set-defaults
-			       (iso8601-parse-date date)))))
-   '(0 6)))
+(defun wse--fill-browser ()
+  (cl-loop for (id user-agent) in (wse-sel "select id, user_agent from views order by id")
+	   for data =
+	   (with-temp-buffer
+	     (call-process "~/src/wse/detect-browser.pl" nil t nil
+			   user-agent)
+	     (goto-char (point-min))
+	     (json-parse-buffer :null-object nil))
+	   do (wse-exec "update views set browser = ?, os = ?, type = ? where id = ?"
+			(gethash "browser" data
+				 (cond
+				  ((gethash "robot" data)
+				   "robot")
+				  ((gethash "lib" data)
+				   "lib")
+				  (t
+				   "")))
+			(gethash "OS" data "")
+			(cond
+			 ((equal (gethash "mobile" data) "1")
+			  "M")
+			 ((equal (gethash "robot" data) "1")
+			  "R")
+			 ((equal (gethash "lib" data) "1")
+			  "L")
+			 ((equal (gethash "tablet" data) "1")
+			  "T")
+			 (t
+			  "N"))
+			id)))
 
 (provide 'wse)
 
