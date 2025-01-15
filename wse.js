@@ -22,9 +22,12 @@ document.addEventListener(
 	      window.open(link, "_blank");
 	  };
 	  jQuery.ajax({
-	    url: "/wp-content/plugins/wse/visit.php?click=" +
-	      encodeURIComponent(link) +
-	      "&page=" + encodeURIComponent(window.location.href),
+	    url: "/wp-content/plugins/wse/visit.php",
+	    type: "POST",
+	    data: {
+	      "click": link,
+	      "page": window.location.href
+	    },
 	    dataType: "json",
 	    success: go,
 	    error: go
@@ -50,9 +53,12 @@ document.addEventListener(
 	    if ($source.length == 1) {
 	      link = $source.attr("src");
 	      jQuery.ajax({
-		url: "/wp-content/plugins/wse/visit.php?click=" +
-		  encodeURIComponent(link) +
-		  "&page=" + encodeURIComponent(window.location.href),
+		url: "/wp-content/plugins/wse/visit.php",
+		type: "POST",
+		data: {
+		  "click": link,
+		  "page": window.location.href
+		},
 		dataType: "json",
 		success: function(result) {
 		}
@@ -72,9 +78,12 @@ document.addEventListener(
 	  var link = "https://www.youtube.com/watch?v=" +
 	      this.id.replace(/^WYL_/, "");
 	  jQuery.ajax({
-	    url: "/wp-content/plugins/wse/visit.php?click=" +
-	      encodeURIComponent(link) +
-	      "&page=" + encodeURIComponent(window.location.href),
+	    url: "/wp-content/plugins/wse/visit.php",
+	    type: "POST",
+	    data: {
+	      "click": link,
+	      "page": window.location.href
+	    },
 	    dataType: "json",
 	    success: function(result) {
 	    }
@@ -100,10 +109,13 @@ document.addEventListener(
 	  title = title.replace(/ +\u2013.*$/, "");
       }
       jQuery.ajax({
-	url: "/wp-content/plugins/wse/visit.php?ref=" +
-	  encodeURIComponent(referrer) +
-	  "&page=" + encodeURIComponent(window.location.href) +
-	  "&title=" + encodeURIComponent(title),
+	url: "/wp-content/plugins/wse/visit.php",
+	type: "POST",
+	data: {
+	  "ref": referrer,
+	  "page": window.location.href,
+	  "title": title
+	},
 	dataType: "json",
 	success: function(result) {
 	}
