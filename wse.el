@@ -1039,5 +1039,3 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (provide 'wse)
 
 ;;; wse.el ends here
-
-;; Sort things more stably
