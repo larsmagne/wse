@@ -223,6 +223,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		       (wse--update-id blog id))
 	   do (wse--store-comments blog (gethash "comments" elems)))
 
+  (wse--fill-browser)
   (unless wse--filling-country
     (wse--fill-country))
   (wse--possibly-summarize-history)
@@ -379,6 +380,37 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		     (run-at-time 2 nil func)))
 		 nil t)))))
     (funcall func)))
+
+(defun wse--fill-browser ()
+  (cl-loop for (id user-agent) in (wse-sel "select id, user_agent from views where type is null order by id")
+	   for data =
+	   (with-temp-buffer
+	     (call-process "~/src/wse/detect-browser.pl" nil t nil
+			   user-agent)
+	     (goto-char (point-min))
+	     (json-parse-buffer :null-object nil))
+	   do (wse-exec "update views set browser = ?, os = ?, type = ? where id = ?"
+			(gethash "browser" data
+				 (cond
+				  ((gethash "robot" data)
+				   "robot")
+				  ((gethash "lib" data)
+				   "lib")
+				  (t
+				   "")))
+			(gethash "OS" data "")
+			(cond
+			 ((equal (gethash "mobile" data) "1")
+			  "M")
+			 ((equal (gethash "robot" data) "1")
+			  "R")
+			 ((equal (gethash "lib" data) "1")
+			  "L")
+			 ((equal (gethash "tablet" data) "1")
+			  "T")
+			 (t
+			  "N"))
+			id)))
 
 ;; Modes and command for modes.
 
@@ -1080,37 +1112,6 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	  (if (wse--weekend-p date)
 	      "bold"
 	    "normal")))
-
-(defun wse--fill-browser ()
-  (cl-loop for (id user-agent) in (wse-sel "select id, user_agent from views order by id")
-	   for data =
-	   (with-temp-buffer
-	     (call-process "~/src/wse/detect-browser.pl" nil t nil
-			   user-agent)
-	     (goto-char (point-min))
-	     (json-parse-buffer :null-object nil))
-	   do (wse-exec "update views set browser = ?, os = ?, type = ? where id = ?"
-			(gethash "browser" data
-				 (cond
-				  ((gethash "robot" data)
-				   "robot")
-				  ((gethash "lib" data)
-				   "lib")
-				  (t
-				   "")))
-			(gethash "OS" data "")
-			(cond
-			 ((equal (gethash "mobile" data) "1")
-			  "M")
-			 ((equal (gethash "robot" data) "1")
-			  "R")
-			 ((equal (gethash "lib" data) "1")
-			  "L")
-			 ((equal (gethash "tablet" data) "1")
-			  "T")
-			 (t
-			  "N"))
-			id)))
 
 (provide 'wse)
 
