@@ -566,20 +566,6 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (make-vtable
      :face 'wse
      :use-header-line nil
-     :columns '((:name "" :align 'right :min-width "70px")
-		(:name "Browser" :width "350px")
-		(:name "" :align 'right :min-width "70px")
-		(:name "OS" :width "350px")
-		(:name "" :align 'right :min-width "70px")
-		(:name "Device" :width "350px"))
-     :objects (wse--get-browser-table-data)
-     :keymap wse-mode-map)
-
-    (goto-char (point-max))
-    (insert "\n")
-    (make-vtable
-     :face 'wse
-     :use-header-line nil
      :columns '((:name "Blog" :max-width 20)
 		(:name "Status")
 		(:name "Author")
@@ -601,6 +587,20 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		      #'wse--browse url url)))
 	(t
 	 (elt elem column))))
+     :keymap wse-mode-map)
+
+    (goto-char (point-max))
+    (insert "\n")
+    (make-vtable
+     :face 'wse
+     :use-header-line nil
+     :columns '((:name "" :align 'right :min-width "70px")
+		(:name "Browser" :width "350px")
+		(:name "" :align 'right :min-width "70px")
+		(:name "OS" :width "350px")
+		(:name "" :align 'right :min-width "70px")
+		(:name "Device" :width "350px"))
+     :objects (wse--get-browser-table-data)
      :keymap wse-mode-map)
 
     (let* ((date (propertize
@@ -632,14 +632,17 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(types (wse-sel "select count(type), type from views where time > ? group by type order by count(type) desc limit ?"
 			(wse--24h) wse-entries)))
     (cl-loop for i from 0 upto (1- wse-entries)
-	     when (or (wse--filter-zero (elt browsers i))
-		      (wse--filter-zero (elt oses i))
-		      (wse--filter-zero (elt types i)))
-	     collect (append (or (wse--filter-zero (elt browsers i)) '("" ""))
-			     (or (wse--filter-zero (elt oses i)) '("" ""))
-			     (let ((type (elt types i)))
-			       (if (and type
-					(not (equal (car type) 0)))
+	     for browser = (wse--filter-zero (elt browsers i))
+	     for os = (wse--filter-zero (elt oses i))
+	     for type = (wse--filter-zero (elt types i))
+	     when (or browser os type)
+	     collect (append (or browser '("" ""))
+			     (if os
+				 (list (car os)
+				       (capitalize (cadr os)))
+			       '("" ""))
+			     (let ((type type))
+			       (if type
 				   (list (car type)
 					 (cond
 					  ((equal (cadr type) "N")
@@ -650,7 +653,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 					   "Mobile")
 					  (t
 					   (cadr type))))
-				 (or  '("" ""))))))))
+				 '("" "")))))))
 
 (defun wse--filter-zero (elem)
   (if (equal (car elem) 0)
