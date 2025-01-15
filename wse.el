@@ -1008,9 +1008,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	'((Bar-Max-Width: 20)
 	  (Color: "#004000"))
 	(cl-loop for (date _views visitors) in data
-		 collect (list visitors "# Label: " (substring date 8)))
-	(list (list (cadr current) "# Label: " (format-time-string "%d")))
-	(list (list (cadr today) "# Label: 24h")))
+		 collect (list
+			  visitors "# Label: " (substring date 8)
+			  (wse--label-font-weight date)))
+	(list (list (cadr current) "# Label: " (format-time-string "%d")
+		    (wse--label-font-weight (format-time-string "%Y-%m-%d"))))
+	(list (list (cadr today) "# Label: 24h, Label-Font-Weight: normal")))
        (append
 	'((Bar-Max-Width: 40)
 	  (Color: "#008000"))
@@ -1019,6 +1022,19 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(list (list (car current) "# Label: " (format-time-string "%d")))
 	(list (list (car today) "# Label: 24h")))))
      "*")))
+
+(defun wse--label-font-weight (date)
+  (format ", Label-Font-Weight: %s"
+	  (if (wse--weekend-p date)
+	      "bold"
+	    "normal")))
+
+(defun wse--weekend-p (date)
+  (memq
+   (decoded-time-weekday
+    (decode-time (encode-time (decoded-time-set-defaults
+			       (iso8601-parse-date date)))))
+   '(0 6)))
 
 (provide 'wse)
 
