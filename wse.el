@@ -969,7 +969,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      (svg-image
       (eplot-make-plot
        `((Format horizontal-bar-chart)
-	 (Color vary)
+	 (Color "#008000")
 	 (Mode dark)
 	 (Layout compact)
 	 (Font ,wse-font)
@@ -983,7 +983,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(cl-loop for (blog views _visitors) in data
 		 collect (list views "# Label: " blog)))
        (append
-	'((Bar-Max-Width: 20)
+	'((Bar-Max-Width: 15)
 	  (Color: "#004000"))
 	(cl-loop for (blog _views visitors) in data
 		 collect (list visitors "# Label: " blog)))))
@@ -1005,7 +1005,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (Width 550)
 	 (Format bar-chart))
        (append
-	'((Bar-Max-Width: 20)
+	'((Bar-Max-Width: 15)
 	  (Color: "#004000"))
 	(cl-loop for (date _views visitors) in data
 		 collect (list
