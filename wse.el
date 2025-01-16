@@ -418,17 +418,17 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 ;; Modes and command for modes.
 
-(define-derived-mode wse-mode special-mode "WSE"
-  "Major mode for listing Wordpress statistics."
-  :interactive nil
-  (setq truncate-lines t))
-
 (defvar-keymap wse-mode-map
   :parent button-map
   "g" #'wse-revert
   "d" #'wse-view-date
   "q" #'bury-buffer
   "v" #'wse-view-details)
+
+(define-derived-mode wse-mode special-mode "WSE"
+  "Major mode for listing Wordpress statistics."
+  :interactive nil
+  (setq truncate-lines t))
 
 (defun wse-revert (&optional silent)
   "Update the current buffer."
