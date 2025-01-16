@@ -1064,7 +1064,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (Layout compact)
 	 (Font ,wse-font)
 	 (Margin-Left 10)
-	 (Horizontal-Label-Left 20)
+	 (Horizontal-Label-Left 15)
 	 (Horizontal-Label-Font-Size 18)
 	 (Height 300)
 	 (Width 250))
@@ -1073,8 +1073,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(cl-loop for (blog views _visitors) in data
 		 collect (list views "# Label: " blog)))
        (append
-	'((Bar-Max-Width: 15)
-	  (Color: "#004000"))
+	'((Bar-Max-Width: 40)
+	  (Color: "#006000"))
 	(cl-loop for (blog _views visitors) in data
 		 collect (list visitors "# Label: " blog)))))
      "*")))
@@ -1095,8 +1095,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (Width 550)
 	 (Format bar-chart))
        (append
-	'((Bar-Max-Width: 15)
-	  (Color: "#004000"))
+	'((Bar-Max-Width: 40)
+	  (Color: "#006000"))
 	(cl-loop for (date _views visitors) in data
 		 collect (list
 			  visitors "# Label: " (substring date 8)
