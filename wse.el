@@ -16,6 +16,9 @@
 
 ;;; Commentary:
 
+;; To detect browser/os, wse uses a Perl library:
+;; apt install libjson-perl libhttp-browserdetect-perl
+
 ;;; Code:
 
 (require 'cl-lib)
