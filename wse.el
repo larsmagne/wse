@@ -55,7 +55,8 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (interactive)
   (when wse--timer
     (cancel-timer wse--timer))
-  (setq wse--timer (run-at-time 60 (* 60 5) #'wse--update)))
+  (setq wse--timer (run-at-time 60 (* 60 5) #'wse--update))
+  (message "Updating statistics every five minutes"))
 
 ;; This is a separate function instead of a lambda so that it's easier
 ;; to find in `M-x list-timers'.
