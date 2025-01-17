@@ -218,6 +218,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   do (cl-loop for elem across (gethash "data" elems)
 		       for (id time click page referrer ip user-agent title) =
 		       (cl-coerce elem 'list)
+		       when (and (not (zerop (length click)))
+				 (not (wse--url-p click)))
+		       ;; Expand relative URLs.
+		       do (setq click (shr-expand-url
+				       click (format "https://%s/" blog)))
 		       ;; If we're running two updates at
 		       ;; the same time, ignore second update.
 		       when (> (string-to-number id)
