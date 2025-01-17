@@ -219,7 +219,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		       for (id time click page referrer ip user-agent title) =
 		       (cl-coerce elem 'list)
 		       when (and (not (wse--bot-p user-agent))
-				 (not (wse--rate-limit time ip click page)))
+				 (not (wse--rate-limit time ip click page))
+				 ;; If we're running two updates at
+				 ;; the same time, ignore second update.
+				 (> (string-to-number id)
+				    (caar
+				     (wse-sel
+				      "select last_id from blogs where blog = ?"
+				      blog))))
 		       do
 		       (wse--insert-data blog (wse--convert-time time)
 					 click page referrer ip
