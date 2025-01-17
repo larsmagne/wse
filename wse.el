@@ -218,19 +218,20 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   do (cl-loop for elem across (gethash "data" elems)
 		       for (id time click page referrer ip user-agent title) =
 		       (cl-coerce elem 'list)
-		       when (and (not (wse--bot-p user-agent))
-				 (not (wse--rate-limit time ip click page))
-				 ;; If we're running two updates at
-				 ;; the same time, ignore second update.
-				 (> (string-to-number id)
-				    (caar
-				     (wse-sel
-				      "select last_id from blogs where blog = ?"
-				      blog))))
+		       ;; If we're running two updates at
+		       ;; the same time, ignore second update.
+		       when (> (string-to-number id)
+			       (or (caar
+				    (wse-sel
+				     "select last_id from blogs where blog = ?"
+				     blog))
+				   -1))
 		       do
-		       (wse--insert-data blog (wse--convert-time time)
-					 click page referrer ip
-					 user-agent title)
+		       (when (and (not (wse--bot-p user-agent))
+				  (not (wse--rate-limit time ip click page)))
+			 (wse--insert-data blog (wse--convert-time time)
+					   click page referrer ip
+					   user-agent title))
 		       (wse--update-id blog id))
 	   do (wse--store-comments blog (gethash "comments" elems)))
 
