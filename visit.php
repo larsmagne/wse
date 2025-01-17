@@ -23,9 +23,7 @@ $result["done"] = true;
 
 // Don't count logged-in users.
 foreach ($_COOKIE as $key=>$val) {
-  // Disabled while developing.
-  if (false &&
-      preg_match("/^wordpress_logged_in_/", $key) &&
+  if (preg_match("/^wordpress_logged_in_/", $key) &&
       $val != "") {
     echo json_encode($result);
     exit;
