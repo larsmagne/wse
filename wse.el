@@ -47,11 +47,11 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun wse ()
   "Display Wordpress statistics."
   (interactive)
-  (switch-to-buffer "*WSE*")
+  (switch-to-buffer "*Wordpress Statistics*")
   (wse--render))
 
 (defun wse-update-automatically ()
-  "Update *WSE* automatically periodically."
+  "Update *Wordpress Statistics* automatically periodically."
   (interactive)
   (when wse--timer
     (cancel-timer wse--timer))
@@ -62,7 +62,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 ;; to find in `M-x list-timers'.
 (defun wse--update ()
   (when-let ((idle (current-idle-time))
-	     (buffer (get-buffer "*WSE*")))
+	     (buffer (get-buffer "*Wordpress Statistics*")))
     (when (> (time-convert (time-since idle) 'integer) 20)
       (with-current-buffer buffer
 	(wse-revert t)))))
