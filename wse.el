@@ -152,6 +152,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			       (iso8601-parse-date date)))))
    '(0 6)))
 
+(defun wse--file (file)
+  (expand-file-name file (file-name-directory (locate-library "wse"))))
+
 ;; Update data.
 
 (defun wse--poll-blogs (&optional callback)
@@ -402,7 +405,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (cl-loop for (id user-agent) in (wse-sel "select id, user_agent from views where type is null order by id")
 	   for data =
 	   (with-temp-buffer
-	     (call-process "~/src/wse/detect-browser.pl" nil t nil
+	     (call-process (wse--file "detect-browser.pl") nil t nil
 			   user-agent)
 	     (goto-char (point-min))
 	     (json-parse-buffer :null-object nil))
@@ -1147,7 +1150,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		   (wse--24h)))
 	 (max (caar data))
 	 (svg (with-temp-buffer
-		(insert-file-contents "~/src/wse/world.svg")
+		(insert-file-contents (wse--file "world.svg"))
 		(car (dom-by-tag (libxml-parse-xml-region
 				  (point) (point-max))
 				 'svg)))))
