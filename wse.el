@@ -608,6 +608,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
     (goto-char (point-max))
     (insert "\n")
+    (insert-image (svg-image (wse--world-map)
+			     :max-width (- (frame-pixel-width) 100))
+		  "*")
+    (insert "\n")
+    
+    (goto-char (point-max))
+    (insert "\n")
     (make-vtable
      :face 'wse
      :use-header-line nil
@@ -1132,6 +1139,28 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	  (if (wse--weekend-p date)
 	      "bold"
 	    "normal")))
+
+(defun wse--world-map ()
+  (let* ((data 
+	  (wse-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc"
+		   (wse--24h)))
+	 (max (caar data))
+	 (svg (with-temp-buffer
+		(insert-file-contents "~/src/wse/world.svg")
+		(car (dom-by-tag (libxml-parse-xml-region
+				  (point) (point-max))
+				 'svg)))))
+    (dom-set-attribute svg 'fill "#202020")
+    (cl-loop for (views name code) in data
+	     for elems = (or (dom-by-id svg (concat "\\`" code "\\'"))
+			     (dom-by-class svg (concat "\\`" name "\\'")))
+	     do (cl-loop for elem in elems
+			 for col = (+ 50 (truncate
+					  (* (/ (float views) max) 180)))
+			 do (dom-set-attribute
+			     elem 'fill
+			     (format "#%02x%02x%02x" col col col))))
+    svg))
 
 (provide 'wse)
 
