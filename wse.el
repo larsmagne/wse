@@ -24,6 +24,7 @@
 (require 'cl-lib)
 (require 'eplot)
 (require 'url-domsuf)
+(require 'shr)
 
 (defvar wse-font "sans-serif"
   "Font family to use in buffer and charts.")
@@ -221,8 +222,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		       when (and (not (zerop (length click)))
 				 (not (wse--url-p click)))
 		       ;; Expand relative URLs.
-		       do (setq click (shr-expand-url
-				       click (format "https://%s/" blog)))
+		       do (setq click (shr-expand-url click page))
 		       ;; If we're running two updates at
 		       ;; the same time, ignore second update.
 		       when (> (string-to-number id)
