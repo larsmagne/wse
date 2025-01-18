@@ -580,6 +580,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
     (goto-char (point-max))
     (insert "\n")
+    (insert-image (svg-image (wse--world-map)
+			     :max-width (- (frame-pixel-width) 100))
+		  "*")
+    (insert "\n")
+    
+    (goto-char (point-max))
+    (insert "\n")
     (make-vtable
      :face 'wse
      :use-header-line nil
@@ -606,13 +613,6 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (elt elem column))))
      :keymap wse-mode-map)
 
-    (goto-char (point-max))
-    (insert "\n")
-    (insert-image (svg-image (wse--world-map)
-			     :max-width (- (frame-pixel-width) 100))
-		  "*")
-    (insert "\n")
-    
     (goto-char (point-max))
     (insert "\n")
     (make-vtable
@@ -1025,7 +1025,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
     "Kagi"
     "Ecosia"
     ("brave" "Brave" "search.brave.com")
-    ("yahoo" "yahoo" "search.yahoo.com")))
+    ("yahoo" "Yahoo" "search.yahoo.com")
+    ("aol" "AOL" "search.aol.com")))
 
 (defun wse--search-p (entity host)
   (cl-loop for elem in wse--search-engines
