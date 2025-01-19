@@ -581,40 +581,41 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (elt elem column))))
      :keymap wse-mode-map)
 
+    (when-let (comments (wse-sel "select blog, status, author, content, post_id from comments where time > ? order by time desc"
+				 (wse--time (- (time-convert (current-time) 'integer)
+					       (* 4 60 60 24)))))
+      (goto-char (point-max))
+      (insert "\n")
+      (make-vtable
+       :face 'wse
+       :use-header-line nil
+       :columns '((:name "Blog" :max-width 20)
+		  (:name "Status")
+		  (:name "Author")
+		  (:name "Comment" :max-width 60))
+       :objects comments
+       :getter
+       (lambda (elem column vtable)
+	 (cond
+	  ((equal (vtable-column vtable column) "Status")
+	   (if (equal (elt elem column) "1")
+	       ""
+	     (elt elem column)))
+	  ((equal (vtable-column vtable column) "Comment")
+	   (let ((url (format "https://%s/?p=%d"
+			      (elt elem 0) (elt elem 4))))
+	     (buttonize (string-replace "\n" " " (elt elem column))
+			#'wse--browse url url)))
+	  (t
+	   (elt elem column))))
+       :keymap wse-mode-map))
+
     (goto-char (point-max))
     (insert "\n")
     (insert-image (svg-image (wse--world-map)
 			     :max-width (- (frame-pixel-width) 100))
 		  "*")
     (insert "\n")
-    
-    (goto-char (point-max))
-    (insert "\n")
-    (make-vtable
-     :face 'wse
-     :use-header-line nil
-     :columns '((:name "Blog" :max-width 20)
-		(:name "Status")
-		(:name "Author")
-		(:name "Comment" :max-width 60))
-     :objects (wse-sel "select blog, status, author, content, post_id from comments where time > ? order by time desc"
-		       (wse--time (- (time-convert (current-time) 'integer)
-				     (* 4 60 60 24))))
-     :getter
-     (lambda (elem column vtable)
-       (cond
-	((equal (vtable-column vtable column) "Status")
-	 (if (equal (elt elem column) "1")
-	     ""
-	   (elt elem column)))
-	((equal (vtable-column vtable column) "Comment")
-	 (let ((url (format "https://%s/?p=%d"
-			    (elt elem 0) (elt elem 4))))
-	   (buttonize (string-replace "\n" " " (elt elem column))
-		      #'wse--browse url url)))
-	(t
-	 (elt elem column))))
-     :keymap wse-mode-map)
 
     (goto-char (point-max))
     (insert "\n")
