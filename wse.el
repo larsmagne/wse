@@ -1166,8 +1166,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				 'svg)))))
     (dom-set-attribute svg 'fill "#202020")
     (cl-loop for (views name code) in data
-	     for elems = (or (dom-by-id svg (concat "\\`" code "\\'"))
-			     (dom-by-class svg (concat "\\`" name "\\'")))
+	     for elems = (dom-by-class svg (concat "\\`" code "\\'"))
 	     do (cl-loop for elem in elems
 			 for col = (+ 40 (truncate
 					  (* (/ (log views) max) 210)))
