@@ -107,6 +107,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   (wse--time (- (time-convert (current-time) 'integer)
 		(* 60 60 24))))
 
+(defun wse--1h ()
+  (wse--time (- (time-convert (current-time) 'integer)
+		(* 60 60 1))))
+
 (defun wse--future ()
   "9999-12-12 23:59:00")
 
@@ -554,9 +558,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :face 'wse
      :use-header-line nil
      :columns '((:name "" :align 'right :min-width "70px")
-		(:name "Posts & Pages" :width "600px")
+		(:name "Views Today" :width "580px")
 		(:name "" :align 'right :min-width "70px")
-		(:name "Referrers" :width 45))
+		(:name "Views Now" :width "580px"))
      :objects (wse--get-page-table-data)
      :keymap wse-mode-map)
 
@@ -566,19 +570,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :face 'wse
      :use-header-line nil
      :columns '((:name "" :align 'right :min-width "70px")
-		(:name "Clicks" :width "600px")
+		(:name "Referrers" :width "580px")
 		(:name "" :align 'right :min-width "70px")
-		(:name "Countries" :width 45))
+		(:name "Clicks" :width "580px"))
      :objects (wse--get-click-table-data)
      :getter
-     (lambda (elem column vtable)
-       (cond
-	((equal (vtable-column vtable column) "Clicks")
-	 (wse--possibly-buttonize (elt elem column)))
-	((equal (vtable-column vtable column) "Countries")
-	 (wse--countrify (elt elem 4) (elt elem column)))
-	(t
-	 (elt elem column))))
+     (lambda (elem column _vtable)
+       (wse--possibly-buttonize (elt elem column)))
      :keymap wse-mode-map)
 
     (when-let (comments (wse-sel "select blog, status, author, content, post_id from comments where time > ? order by time desc"
@@ -623,11 +621,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :face 'wse
      :use-header-line nil
      :columns '((:name "" :align 'right :min-width "70px")
-		(:name "Browser" :width "350px")
+		(:name "Countries" :width "300px")
 		(:name "" :align 'right :min-width "70px")
-		(:name "OS" :width "350px")
+		(:name "Browser" :width "200px")
 		(:name "" :align 'right :min-width "70px")
-		(:name "Device" :width "350px"))
+		(:name "OS" :width "200px")
+		(:name "" :align 'right :min-width "70px")
+		(:name "Device" :width "200px"))
      :objects (wse--get-browser-table-data)
      :keymap wse-mode-map)
 
@@ -658,30 +658,40 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(oses (wse-sel "select count(os), os from views where time > ? group by os order by count(os) desc limit ?"
 		       (wse--24h) wse-entries))
 	(types (wse-sel "select count(type), type from views where time > ? group by type order by count(type) desc limit ?"
-			(wse--24h) wse-entries)))
+			(wse--24h) wse-entries))
+	(countries
+	 (wse-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit ?"
+		  time wse-entries)))
     (cl-loop for i from 0 upto (1- wse-entries)
+	     for country = (elt countries i)
 	     for browser = (wse--filter-zero (elt browsers i))
 	     for os = (wse--filter-zero (elt oses i))
 	     for type = (wse--filter-zero (elt types i))
 	     when (or browser os type)
-	     collect (append (or browser '("" ""))
-			     (if os
-				 (list (car os)
-				       (capitalize (cadr os)))
-			       '("" ""))
-			     (let ((type type))
-			       (if type
-				   (list (car type)
-					 (cond
-					  ((equal (cadr type) "N")
-					   "Desktop")
-					  ((equal (cadr type) "T")
-					   "Tablet")
-					  ((equal (cadr type) "M")
-					   "Mobile")
-					  (t
-					   (cadr type))))
-				 '("" "")))))))
+	     collect (append
+		      (if country
+			  (list (car country)
+				(wse--countrify
+				 (nth 2 country) (nth 1 country)))
+			'("" ""))
+		      (or browser '("" ""))
+		      (if os
+			  (list (car os)
+				(capitalize (cadr os)))
+			'("" ""))
+		      (let ((type type))
+			(if type
+			    (list (car type)
+				  (cond
+				   ((equal (cadr type) "N")
+				    "Desktop")
+				   ((equal (cadr type) "T")
+				    "Tablet")
+				   ((equal (cadr type) "M")
+				    "Mobile")
+				   (t
+				    (cadr type))))
+			  '("" "")))))))
 
 (defun wse--filter-zero (elem)
   (if (equal (car elem) 0)
@@ -717,50 +727,43 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (seq-take (nreverse (sort results #'car-less-than-car)) wse-entries)))
 
 (defun wse--get-page-table-data ()
-  (let* ((time (wse--24h))
-	 (pages
+  (let* ((today
 	  (wse--transform-pages
 	   (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
-		    time (* wse-entries 2))))
-	 (referrers
-	  (wse--transform-referrers
-	   (wse-sel "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
-		    time)
-	   t)))
+		    (wse--24h) (* wse-entries 2))))
+	 (now
+	  (wse--transform-pages
+	   (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
+		    (wse--1h) (* wse-entries 2)))))
     (nconc
      (cl-loop for i from 0 upto (1- wse-entries)
-	      for page = (elt pages i)
-	      for referrer = (elt referrers i)
-	      for title = (nth 1 page)
+	      when (and (elt today i) (elt now i))
 	      collect
-	      (append
-	       (if page
-		   (list (nth 0 page)
-			 (if (and (> (length title) 3)
-				  (get-text-property 3 'button title))
-			     title
-			   (buttonize
-			    (cond
-			     ((wse--url-p title)
-			      (wse--pretty-url title))
-			     ((zerop (length title))
-			      (wse--pretty-url (nth 2 page)))
-			     (t
-			      title))
-			    #'wse--browse (elt page 2)
-			    (elt page 2))))
-		 (list "" ""))
-	       (if referrer
-		   (list (car referrer)
-			 (wse--possibly-buttonize (cadr referrer))
-			 (nth 2 referrer))
-		 (list "" ""))))
+	      (cl-loop
+	       for page in (list (elt today i) (elt now i))
+	       for title = (nth 1 page)
+	       append (if page
+			  (list (nth 0 page)
+				(if (and (> (length title) 3)
+					 (get-text-property 3 'button title))
+				    title
+				  (buttonize
+				   (cond
+				    ((wse--url-p title)
+				     (wse--pretty-url title))
+				    ((zerop (length title))
+				     (wse--pretty-url (nth 2 page)))
+				    (t
+				     title))
+				   #'wse--browse (elt page 2)
+				   (elt page 2))))
+			(list "" ""))))
      (list
       (list
-       (caar (wse-sel "select count(*) from views where time > ?" time))
+       (caar (wse-sel "select count(*) from views where time > ?" (wse--24h)))
        (buttonize "Total Views" #'wse--view-total-views)
-       (caar (wse-sel "select count(*) from referrers where time > ?" time))
-       (buttonize "Total Referrers" #'wse--view-total-referrers))))))
+       (caar (wse-sel "select count(*) from views where time > ?" (wse--1h)))
+       (buttonize "Total Views" #'wse--view-total-views))))))
 
 (defun wse--add-media-clicks (clicks)
   (nreverse
@@ -784,14 +787,22 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	    (format "select count(domain), domain, count(distinct click), click from clicks where time > ? and domain not in (%s) group by domain order by count(domain) desc limit ?"
 		    (wse--in wse-blogs))
 	    `(,time ,@wse-blogs ,wse-entries))))
-	 (countries
-	  (wse-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit ?"
-		   time wse-entries)))
+	 (referrers
+	  (wse--transform-referrers
+	   (wse-sel "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
+		    time)
+	   t)))
     (nconc
      (cl-loop for i from 0 upto (1- wse-entries)
 	      for click = (elt clicks i)
+	      for referrer = (elt referrers i)
+	      when (and click referrer)
 	      collect
 	      (append
+	       (if referrer
+		   (list (car referrer)
+			 (wse--possibly-buttonize (cadr referrer)))
+		 '("" ""))
 	       (if click
 		   (list (car click)
 			 (cond
@@ -806,16 +817,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				   (lambda (domain)
 				     (wse--view-clicks domain))
 				   (cadr click))))))
-		 (list "" ""))
-		      (or (elt countries i) (list "" ""))))
-    
+		 '("" ""))))
+	       
      (list
       (list
+       (caar (wse-sel "select count(*) from referrers where time > ?" time))
+       (buttonize "Total Referrers" #'wse--view-total-referrers)
        (caar (wse-sel "select count(*) from clicks where time > ?" time))
-       (buttonize "Total Clicks" #'wse--view-total-clicks)
-       (caar (wse-sel "select count(distinct country) from views where time > ?"
-		      time))
-       (buttonize "Total Countries" #'wse--view-total-countries))))))
+       (buttonize "Total Clicks" #'wse--view-total-clicks))))))
 
 (defvar-keymap wse-clicks-mode-map
   :parent button-map
@@ -1149,7 +1158,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (let* ((data 
 	  (wse-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc"
 		   (wse--24h)))
-	 (max (caar data))
+	 (max (log (caar data)))
 	 (svg (with-temp-buffer
 		(insert-file-contents (wse--file "world.svg"))
 		(car (dom-by-tag (libxml-parse-xml-region
@@ -1160,8 +1169,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	     for elems = (or (dom-by-id svg (concat "\\`" code "\\'"))
 			     (dom-by-class svg (concat "\\`" name "\\'")))
 	     do (cl-loop for elem in elems
-			 for col = (+ 50 (truncate
-					  (* (/ (float views) max) 180)))
+			 for col = (+ 40 (truncate
+					  (* (/ (log views) max) 210)))
 			 do (dom-set-attribute
 			     elem 'fill
 			     (format "#%02x%02x%02x" col col col))))
