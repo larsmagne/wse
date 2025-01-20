@@ -737,7 +737,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		    (wse--1h) (* wse-entries 2)))))
     (nconc
      (cl-loop for i from 0 upto (1- wse-entries)
-	      when (and (elt today i) (elt now i))
+	      when (or (elt today i) (elt now i))
 	      collect
 	      (cl-loop
 	       for page in (list (elt today i) (elt now i))
