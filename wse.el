@@ -342,13 +342,15 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun wse--possibly-summarize-history ()
   (let ((max (caar (wse-sel "select max(date) from history"))))
     (when (or (not max)
-	      (string< max (substring (wse--time (current-time)) 0 10)))
+	      (string< max (substring
+			    (wse--time (- (time-convert (current-time) 'integer)
+					  (* 60 60 24)))
+			    0 10)))
       (wse--summarize-history))))
 
 (defun wse--summarize-history ()
   (dolist (blog wse-blogs)
-    (cl-loop with max-date = (caar (wse-sel "select max(date) from views where blog = ?"
-					    blog))
+    (cl-loop with max-date = (caar (wse-sel "select max(date) from views"))
 	     for (date views visitors) in
 	     (wse-sel "select date, count(date), count(distinct ip) from views where date < ? and blog = ? group by date order by date"
 		      max-date blog)
