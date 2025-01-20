@@ -711,7 +711,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
       nil
     elem))
 
-(defun wse--transform-pages (data)
+(defun wse--transform-pages (data cutoff)
   (let ((counts (make-hash-table :test #'equal))
 	(titles (make-hash-table :test #'equal))
 	(urls (make-hash-table :test #'equal))
@@ -733,21 +733,27 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		 (when urls
 		   (setq title
 			 (concat "🔽 "
-				 (buttonize title
-					    #'wse--view-page-details urls))))
+				 (buttonize
+				  title
+				  (lambda (_)
+				    (wse--view-page-details urls cutoff))))))
 		 (push (list count title page) results)))
 	     counts)
     (seq-take (nreverse (sort results #'car-less-than-car)) wse-entries)))
 
 (defun wse--get-page-table-data ()
   (let* ((today
-	  (wse--transform-pages
-	   (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
-		    (wse--24h) (* wse-entries 2))))
+	  (wse--sort-views
+	   (wse--transform-pages
+	    (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
+		     (wse--24h) (* wse-entries 2))
+	    (wse--24h))))
 	 (now
-	  (wse--transform-pages
-	   (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
-		    (wse--1h) (* wse-entries 2)))))
+	  (wse--sort-views
+	   (wse--transform-pages
+	    (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
+		     (wse--1h) (* wse-entries 2))
+	    (wse--1h)))))
     (nconc
      (cl-loop for i from 0 upto (1- wse-entries)
 	      when (or (elt today i) (elt now i))
@@ -781,6 +787,25 @@ I.e., \"google.com\" or \"google.co.uk\"."
        (buttonize "Total Views" #'wse--view-total-views (wse--24h))
        (caar (wse-sel "select count(*) from views where time > ?" (wse--1h)))
        (buttonize "Total Views" #'wse--view-total-views (wse--1h)))))))
+
+(defun wse--sort-views (views)
+  (sort views
+	(lambda (v1 v2)
+	  (cond
+	   ((< (car v1) (car v2))
+	    nil)
+	   ((> (car v1) (car v2))
+	    t)
+	   (t
+	    (let ((v1-date (wse--url-date (nth 2 v1)))
+		  (v2-date (wse--url-date (nth 2 v2))))
+	      (if (and v1-date v2-date)
+		  (string< v2-date v1-date)
+		nil)))))))
+
+(defun wse--url-date (url)
+  (and (string-match "/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/" url)
+       (match-string 0 url)))
 
 (defun wse--add-details (callback params string)
   (propertize string
