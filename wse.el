@@ -674,7 +674,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			(wse--24h) wse-entries))
 	(countries
 	 (wse-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit ?"
-		  time wse-entries)))
+		  (wse--24h) wse-entries)))
     (cl-loop for i from 0 upto (1- wse-entries)
 	     for country = (elt countries i)
 	     for browser = (wse--filter-zero (elt browsers i))
