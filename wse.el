@@ -522,6 +522,32 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (elt elem column)))
      :keymap wse-mode-map)))
 
+(defun wse--view-select-details (statement param)
+  (switch-to-buffer "*WSE Details*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (make-vtable
+     :face 'wse
+     :columns '((:name "Time")
+		(:name "Page" :max-width 40)
+		(:name "Referrer" :max-width 40)
+		(:name "IP" :max-width 20)
+		(:name "Country")
+		(:name "User-Agent"))
+     :objects (apply
+	       #'wse-sel
+	       (format "select time, page, referrer, ip, country, user_agent from views where time > ? and %s order by time"
+		       statement)
+	       (list (wse--24h) param))
+     :getter
+     (lambda (elem column vtable)
+       (if (member (vtable-column vtable column) '("Referrer" "Page"))
+	   (wse--possibly-buttonize (elt elem column))
+	 (elt elem column)))
+     :keymap wse-mode-map)))
+
 (defun wse--view-referrer-details (urls)
   (switch-to-buffer "*WSE Details*")
   (let ((inhibit-read-only t))
@@ -675,36 +701,43 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(countries
 	 (wse-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc limit ?"
 		  (wse--24h) wse-entries)))
-    (cl-loop for i from 0 upto (1- wse-entries)
-	     for country = (elt countries i)
-	     for browser = (wse--filter-zero (elt browsers i))
-	     for os = (wse--filter-zero (elt oses i))
-	     for type = (wse--filter-zero (elt types i))
-	     when (or browser os type)
-	     collect (append
-		      (if country
-			  (list (car country)
-				(wse--countrify
-				 (nth 2 country) (nth 1 country)))
-			'("" ""))
-		      (or browser '("" ""))
-		      (if os
-			  (list (car os)
-				(capitalize (cadr os)))
-			'("" ""))
-		      (let ((type type))
-			(if type
-			    (list (car type)
-				  (cond
-				   ((equal (cadr type) "N")
-				    "Desktop")
-				   ((equal (cadr type) "T")
-				    "Tablet")
-				   ((equal (cadr type) "M")
-				    "Mobile")
-				   (t
-				    (cadr type))))
-			  '("" "")))))))
+    (nconc
+     (cl-loop for i from 0 upto (1- wse-entries)
+	      for country = (elt countries i)
+	      for browser = (wse--filter-zero (elt browsers i))
+	      for os = (wse--filter-zero (elt oses i))
+	      for type = (wse--filter-zero (elt types i))
+	      when (or browser os type)
+	      collect (append
+		       (if country
+			   (list (car country)
+				 (wse--countrify
+				  (nth 2 country) (nth 1 country)))
+			 '("" ""))
+		       (or browser '("" ""))
+		       (if os
+			   (list (car os)
+				 (capitalize (cadr os)))
+			 '("" ""))
+		       (let ((type type))
+			 (if type
+			     (list (car type)
+				   (cond
+				    ((equal (cadr type) "N")
+				     "Desktop")
+				    ((equal (cadr type) "T")
+				     "Tablet")
+				    ((equal (cadr type) "M")
+				     "Mobile")
+				    (t
+				     (cadr type))))
+			   '("" "")))))
+     (list
+      (list
+       (caar (wse-sel "select count(distinct country) from views where time > ?"
+		      time))
+       (buttonize "Total Countries" #'wse--view-total-countries)
+       "" "" "" "" "" "")))))
 
 (defun wse--filter-zero (elem)
   (if (equal (car elem) 0)
@@ -1043,7 +1076,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Countries")
-	   (wse--countrify (elt elem 2) (elt elem column))
+	   (wse--add-details
+	    #'wse--view-select-details
+	    (list "country = ?" (elt elem 2))
+	    (wse--countrify (elt elem 2) (elt elem column)))
 	 (elt elem column)))
      :keymap wse-mode-map)))
 
