@@ -489,17 +489,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun wse-view-details ()
   "View details of the URL under point."
   (interactive nil wse-mode)
-  (cond
-   ((eq (vtable-current-column) 1)
-    (when-let ((data (elt (vtable-current-object) (vtable-current-column)))
-	       (url (get-text-property 1 'help-echo data)))
-      (wse--view-page-details url)))
-   ((eq (vtable-current-column) 3)
-    (when-let ((urls (elt (vtable-current-object) 4)))
-      (when (listp urls)
-	(wse--view-referrer-details urls))))))
+  (let ((callback (get-text-property (point) 'wse--details)))
+    (unless callback
+      (user-error "No details here"))
+    (funcall callback)))
 
-(defun wse--view-page-details (urls)
+(defun wse--view-page-details (urls &optional cutoff)
   (when (stringp urls)
     (setq urls (list urls)))
   (switch-to-buffer "*WSE Details*")
@@ -519,7 +514,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	       #'wse-sel
 	       (format "select time, blog, ip, referrer, country, user_agent from views where time > ? and page in (%s) order by time"
 		       (wse--in urls))
-	       (wse--24h) urls)
+	       (or cutoff (wse--24h)) urls)
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Referrer")
@@ -547,6 +542,24 @@ I.e., \"google.com\" or \"google.co.uk\"."
        (if (equal (vtable-column vtable column) "Page")
 	   (wse--possibly-buttonize (elt elem column))
 	 (elt elem column)))
+     :keymap wse-mode-map)))
+
+(defun wse--view-click-details (domain)
+  (switch-to-buffer "*WSE Details*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (make-vtable
+     :face 'wse
+     :columns '((:name "Time")
+		(:name "Page" :max-width 40)
+		(:name "Click"))
+     :objects (wse-sel "select time, page, click from clicks where time > ? and domain = ? order by time"
+		       (wse--24h) domain)
+     :getter
+     (lambda (elem column _vtable)
+       (wse--possibly-buttonize (elt elem column)))
      :keymap wse-mode-map)))
 
 (defun wse--render ()
@@ -741,29 +754,39 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	      collect
 	      (cl-loop
 	       for page in (list (elt today i) (elt now i))
+	       for cutoff in (list (wse--24h) (wse--1h))
 	       for title = (nth 1 page)
 	       append (if page
 			  (list (nth 0 page)
 				(if (and (> (length title) 3)
 					 (get-text-property 3 'button title))
 				    title
-				  (buttonize
-				   (cond
-				    ((wse--url-p title)
-				     (wse--pretty-url title))
-				    ((zerop (length title))
-				     (wse--pretty-url (nth 2 page)))
-				    (t
-				     title))
-				   #'wse--browse (elt page 2)
-				   (elt page 2))))
+				  (wse--add-details
+				   #'wse--view-page-details
+				   (list (list (nth 2 page)) cutoff)
+				   (buttonize
+				    (cond
+				     ((wse--url-p title)
+				      (wse--pretty-url title))
+				     ((zerop (length title))
+				      (wse--pretty-url (nth 2 page)))
+				     (t
+				      title))
+				    #'wse--browse (elt page 2)
+				    (elt page 2)))))
 			(list "" ""))))
      (list
       (list
        (caar (wse-sel "select count(*) from views where time > ?" (wse--24h)))
-       (buttonize "Total Views" #'wse--view-total-views)
+       (buttonize "Total Views" #'wse--view-total-views (wse--24h))
        (caar (wse-sel "select count(*) from views where time > ?" (wse--1h)))
-       (buttonize "Total Views" #'wse--view-total-views))))))
+       (buttonize "Total Views" #'wse--view-total-views (wse--1h)))))))
+
+(defun wse--add-details (callback params string)
+  (propertize string
+	      'wse--details
+	      (lambda ()
+		(apply callback params))))
 
 (defun wse--add-media-clicks (clicks)
   (nreverse
@@ -780,18 +803,18 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--get-click-table-data ()
   (let* ((time (wse--24h))
+	 (referrers
+	  (wse--transform-referrers
+	   (wse-sel "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
+		    time)
+	   t))
 	 (clicks
 	  (wse--add-media-clicks
 	   (apply
 	    #'wse-sel
 	    (format "select count(domain), domain, count(distinct click), click from clicks where time > ? and domain not in (%s) group by domain order by count(domain) desc limit ?"
 		    (wse--in wse-blogs))
-	    `(,time ,@wse-blogs ,wse-entries))))
-	 (referrers
-	  (wse--transform-referrers
-	   (wse-sel "select count(referrer), referrer from referrers where time > ? group by referrer order by count(referrer) desc"
-		    time)
-	   t)))
+	    `(,time ,@wse-blogs ,wse-entries)))))
     (nconc
      (cl-loop for i from 0 upto (1- wse-entries)
 	      for click = (elt clicks i)
@@ -801,15 +824,21 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	      (append
 	       (if referrer
 		   (list (car referrer)
-			 (wse--possibly-buttonize (cadr referrer)))
+			 (wse--add-details
+			  #'wse--view-referrer-details (list (nth 2 referrer))
+			  (wse--possibly-buttonize (cadr referrer))))
 		 '("" ""))
 	       (if click
 		   (list (car click)
 			 (cond
 			  ((not (nth 2 click))
-			   (nth 1 click))
+			   (wse--add-details
+			    #'wse--view-click-details (list (nth 1 click))
+			    (nth 1 click)))
 			  ((= (nth 2 click) 1)
-			   (nth 3 click))
+			   (wse--add-details
+			    #'wse--view-click-details (list (nth 1 click))
+			    (nth 3 click)))
 			  (t
 			   (concat
 			    "🔽 " (buttonize
@@ -890,11 +919,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (elt elem column)))
      :keymap wse-clicks-mode-map)))
 
-(defun wse--view-total-views (_ &optional date)
+(defun wse--view-total-views (cutoff &optional date)
   (unless date
     (switch-to-buffer "*Total WSE*"))
   (let ((inhibit-read-only t)
-	(from (wse--24h))
+	(from (or cutoff (wse--24h)))
 	(to (wse--future)))
     (if date
 	(setq from (concat date " 00:00:00")
@@ -1156,7 +1185,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--world-map ()
   (let* ((data 
-	  (wse-sel "select count(country), name, code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc"
+	  (wse-sel "select count(country), code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc"
 		   (wse--24h)))
 	 (max (log (caar data)))
 	 (svg (with-temp-buffer
@@ -1165,7 +1194,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				  (point) (point-max))
 				 'svg)))))
     (dom-set-attribute svg 'fill "#202020")
-    (cl-loop for (views name code) in data
+    (cl-loop for (views code) in data
 	     for elems = (dom-by-class svg (concat "\\`" code "\\'"))
 	     do (cl-loop for elem in elems
 			 for col = (+ 40 (truncate
