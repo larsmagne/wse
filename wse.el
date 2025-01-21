@@ -101,7 +101,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     string))
 
 (defun wse--time (time)
-  (format-time-string "%Y-%m-%d %H:%M:%S" time))
+  (format-time-string "%Y-%m-%d %H:%M:%S" time "Z"))
 
 (defun wse--24h ()
   (wse--time (- (time-convert (current-time) 'integer)
@@ -113,10 +113,6 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun wse--future ()
   "9999-12-12 23:59:00")
-
-(defun wse--convert-time (time)
-  "Convert TIME from GMT/Z/UTC to local time."
-  (wse--time (wse--parse-time time)))
 
 (defun wse--parse-time (time)
   "Convert TIME from GMT/Z/UTC to local time."
@@ -246,7 +242,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		       do
 		       (when (and (not (wse--bot-p user-agent))
 				  (not (wse--rate-limit time ip click page)))
-			 (wse--insert-data blog (wse--convert-time time)
+			 (wse--insert-data blog time
 					   click page referrer ip
 					   user-agent title))
 		       (wse--update-id blog id))
@@ -336,8 +332,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			blog
 			(gethash "comment_id" comment)
 			(gethash "comment_post_id" comment)
-			(wse--convert-time
-			 (gethash "comment_date_gmt" comment))
+			(gethash "comment_date_gmt" comment)
 			(gethash "comment_author" comment)
 			(gethash "comment_author_email" comment)
 			(gethash "comment_url" comment)
