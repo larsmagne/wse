@@ -445,6 +445,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   "g" #'wse-revert
   "d" #'wse-view-date
   "q" #'bury-buffer
+  "w" #'wse-clicks-view-todays-media
   "v" #'wse-view-details)
 
 (define-derived-mode wse-mode special-mode "WSE"
@@ -917,7 +918,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defvar-keymap wse-clicks-mode-map
   :parent button-map
-  "v" #'wse-clicks-view-todays-media
+  "w" #'wse-clicks-view-todays-media
   "q" #'bury-buffer)
 
 (define-derived-mode wse-clicks-mode special-mode
@@ -928,12 +929,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse-clicks-view-todays-media ()
   "View today's media clicks."
-  (interactive nil wse-clicks-mode)
-  (let* ((objects
-	  (save-excursion
-	    (goto-char (point-min))
-	    (vtable-objects (vtable-current-table))))
-	 (urls (cl-loop for (_ url) in objects
+  (interactive nil wse-clicks-mode wse-mode)
+  (let* ((urls (cl-loop for (url)
+			in (wse-sel "select distinct click from clicks where time > ?"
+				    (wse--24h))
 			when (and (and (wse--media-p url)
 				       (not (string-match "[.]mp4\\'" url)))
 				  (string-match-p
