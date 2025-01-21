@@ -115,7 +115,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   "9999-12-12 23:59:00")
 
 (defun wse--parse-time (time)
-  "Convert TIME from GMT/Z/UTC to local time."
+  "Decode TIME, which is GMT/Z/UTC."
   (encode-time (iso8601-parse (concat (string-replace " " "T" time) "Z"))))
 
 (defun wse--browse (url)
