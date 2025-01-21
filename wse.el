@@ -941,7 +941,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				  (not (gethash url wse--shown-media)))
 			collect url)))
     (unless urls
-      (error "No URLs today"))
+      (error "No unseen media clicks"))
     (dolist (url urls)
       (setf (gethash url wse--shown-media) t))
     ;; This code doesn't really make sense in general, so it should be
