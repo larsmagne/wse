@@ -159,6 +159,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun wse--file (file)
   (expand-file-name file (file-name-directory (locate-library "wse"))))
 
+(defun wse--adjust-title (title url)
+  (if (string-match "/category/" url)
+      (concat "Category: " title)
+    title))
+
 ;; Update data.
 
 (defun wse--poll-blogs (&optional callback)
@@ -813,7 +818,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				     ((zerop (length title))
 				      (wse--pretty-url (nth 2 page)))
 				     (t
-				      title))
+				      (wse--adjust-title title (nth 2 page))))
 				    #'wse--browse (elt page 2)
 				    (elt page 2)))))
 			(list "" ""))))
@@ -1000,7 +1005,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Posts & Pages")
-	   (buttonize (wse--pretty-url (elt elem column))
+	   (buttonize (wse--adjust-title (elt elem column)
+					 (elt elem 3))
 		      #'wse--browse (elt elem 3) (elt elem 3))
 	 (elt elem column)))
      :keymap wse-mode-map)))
