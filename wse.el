@@ -880,7 +880,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      (cl-loop for i from 0 upto (1- wse-entries)
 	      for click = (elt clicks i)
 	      for referrer = (elt referrers i)
-	      when (and click referrer)
+	      when (or click referrer)
 	      collect
 	      (append
 	       (if referrer
