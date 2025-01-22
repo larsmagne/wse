@@ -72,7 +72,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 
 (defun wse--bot-p (user-agent)
   (let ((case-fold-search t))
-    (string-match-p "bot/\\|spider\\b" user-agent)))
+    (string-match-p "bot/\\|spider\\b\\|DuckDuckBot" user-agent)))
 
 (defun wse--host (url)
   (url-host (url-generic-parse-url url)))
@@ -775,21 +775,23 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				    (wse--view-page-details urls cutoff))))))
 		 (push (list count title page) results)))
 	     counts)
-    (seq-take (nreverse (sort results #'car-less-than-car)) wse-entries)))
+    (nreverse (sort results #'car-less-than-car))))
 
 (defun wse--get-page-table-data ()
   (let* ((today
 	  (wse--sort-views
 	   (wse--transform-pages
-	    (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
-		     (wse--24h) (* wse-entries 2))
+	    (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc"
+		     (wse--24h))
 	    (wse--24h))))
 	 (now
-	  (wse--sort-views
-	   (wse--transform-pages
-	    (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc limit ?"
-		     (wse--1h) (* wse-entries 2))
-	    (wse--1h)))))
+	  (seq-take
+	   (wse--sort-views
+	    (wse--transform-pages
+	     (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc"
+		      (wse--1h))
+	     (wse--1h)))
+	   wse-entries)))
     (nconc
      (cl-loop for i from 0 upto (1- wse-entries)
 	      when (or (elt today i) (elt now i))
@@ -1210,8 +1212,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (let ((data (wse-sel "select date, sum(views), sum(visitors) from history group by date order by date limit 14"))
 	(today (car (wse-sel "select count(*), count(distinct ip) from views where time > ?"
 			     (wse--24h))))
-	(current (car (wse-sel "select count(*), count(distinct ip) from views where time > ?"
-			       (format-time-string "%Y-%m-%d 00:00:00")))))
+	(current
+	 (car (wse-sel
+	       "select count(*), count(distinct ip) from views where time > ?"
+	       (format-time-string "%Y-%m-%d 00:00:00" nil "Z")))))
     (insert-image
      (svg-image
       (eplot-make-plot
@@ -1228,15 +1232,18 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		 collect (list
 			  visitors "# Label: " (substring date 8)
 			  (wse--label-font-weight date)))
-	(list (list (cadr current) "# Label: " (format-time-string "%d")
-		    (wse--label-font-weight (format-time-string "%Y-%m-%d"))))
+	(list (list (cadr current) "# Label: "
+		    (format-time-string "%d" nil "Z")
+		    (wse--label-font-weight
+		     (format-time-string "%Y-%m-%d" nil "Z"))))
 	(list (list (cadr today) "# Label: 24h, Label-Font-Weight: normal")))
        (append
 	'((Bar-Max-Width: 40)
 	  (Color: "#008000"))
 	(cl-loop for (date views _visitors) in data
 		 collect (list views "# Label: " (substring date 8)))
-	(list (list (car current) "# Label: " (format-time-string "%d")))
+	(list (list (car current) "# Label: "
+		    (format-time-string "%d" nil "Z")))
 	(list (list (car today) "# Label: 24h")))))
      "*")))
 
