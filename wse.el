@@ -633,7 +633,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
        :use-header-line nil
        :columns '((:name "Blog" :max-width 20)
 		  (:name "Status")
-		  (:name "Author")
+		  (:name "Author" :max-width "400px")
 		  (:name "Comment" :max-width 60))
        :objects comments
        :getter
@@ -643,10 +643,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   (if (equal (elt elem column) "1")
 	       ""
 	     (elt elem column)))
+	  ((equal (vtable-column vtable column) "Author")
+	   (mm-url-decode-entities-string (elt elem column)))
 	  ((equal (vtable-column vtable column) "Comment")
 	   (let ((url (format "https://%s/?p=%d"
 			      (elt elem 0) (elt elem 4))))
-	     (buttonize (string-replace "\n" " " (elt elem column))
+	     (buttonize (mm-url-decode-entities-string
+			 (string-replace "\n" " " (elt elem column)))
 			#'wse--browse url url)))
 	  (t
 	   (elt elem column))))
