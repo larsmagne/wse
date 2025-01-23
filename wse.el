@@ -231,6 +231,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				 (not (wse--url-p click)))
 		       ;; Expand relative URLs.
 		       do (setq click (shr-expand-url click page))
+		       when (not (stringp user-agent))
+		       do (setq user-agent "")
 		       ;; If we're running two updates at
 		       ;; the same time, ignore second update.
 		       when (> (string-to-number id)
@@ -710,7 +712,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	      for browser = (wse--filter-zero (elt browsers i))
 	      for os = (wse--filter-zero (elt oses i))
 	      for type = (wse--filter-zero (elt types i))
-	      when (or browser os type)
+	      when (or country browser os type)
 	      collect (append
 		       (if country
 			   (list (car country)
