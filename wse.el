@@ -743,7 +743,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      (list
       (list
        (caar (wse-sel "select count(distinct country) from views where time > ?"
-		      time))
+		      (wse--24h)))
        (buttonize "Total Countries" #'wse--view-total-countries)
        "" "" "" "" "" "")))))
 
@@ -951,15 +951,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
       (error "No unseen media clicks"))
     (dolist (url urls)
       (setf (gethash url wse--shown-media) t))
-    ;; This code doesn't really make sense in general, so it should be
-    ;; factored out.
-    (let ((browse-url-browser-function browse-url-secondary-browser-function))
-      (browse-url (pop urls))
-      (sleep-for 2)
-      (when urls
-	(let ((browse-url-firefox-program "/usr/local/bin/firefox/firefox"))
-	  (dolist (url urls)
-	    (browse-url url)))))))
+    (open-webs urls)))
 
 (defun wse--view-clicks (domains)
   (unless (listp domains)
