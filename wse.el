@@ -1206,7 +1206,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      "*")))
 
 (defun wse--plot-history ()
-  (let ((data (wse-sel "select date, sum(views), sum(visitors) from history group by date order by date limit 14"))
+  (let ((data (nreverse (wse-sel "select date, sum(views), sum(visitors) from history group by date order by date desc limit 14")))
 	(today (car (wse-sel "select count(*), count(distinct ip) from views where time > ?"
 			     (wse--24h))))
 	(current
