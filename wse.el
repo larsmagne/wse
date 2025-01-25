@@ -796,41 +796,41 @@ I.e., \"google.com\" or \"google.co.uk\"."
    wse-entries))
 	  
 (defun wse--get-page-table-data ()
-  (let* ((today (wse--select-views (wse--24h)))
-	 (now (wse--select-views (wse--1h))))
-    (nconc
-     (cl-loop for i from 0 upto (1- wse-entries)
-	      when (or (elt today i) (elt now i))
-	      collect
-	      (cl-loop
-	       for page in (list (elt today i) (elt now i))
-	       for cutoff in (list (wse--24h) (wse--1h))
-	       for title = (nth 1 page)
-	       append (if page
-			  (list (nth 0 page)
-				(if (and (> (length title) 3)
-					 (get-text-property 3 'button title))
-				    title
-				  (wse--add-details
-				   #'wse--view-page-details
-				   (list (list (nth 2 page)) cutoff)
-				   (buttonize
-				    (cond
-				     ((wse--url-p title)
-				      (wse--pretty-url title))
-				     ((zerop (length title))
-				      (wse--pretty-url (nth 2 page)))
-				     (t
-				      (wse--adjust-title title (nth 2 page))))
-				    #'wse--browse (elt page 2)
-				    (elt page 2)))))
-			(list "" ""))))
-     (list
-      (list
-       (caar (wse-sel "select count(*) from views where time > ?" (wse--24h)))
-       (buttonize "Total Views" #'wse--view-total-views (wse--24h))
-       (caar (wse-sel "select count(*) from views where time > ?" (wse--1h)))
-       (buttonize "Total Views" #'wse--view-total-views (wse--1h)))))))
+  (nconc
+   (cl-loop with today = (wse--select-views (wse--24h))
+	    and now = (wse--select-views (wse--1h))
+	    for i from 0 upto (1- wse-entries)
+	    when (or (elt today i) (elt now i))
+	    collect
+	    (cl-loop
+	     for page in (list (elt today i) (elt now i))
+	     for cutoff in (list (wse--24h) (wse--1h))
+	     for title = (nth 1 page)
+	     append (if page
+			(list (nth 0 page)
+			      (if (and (> (length title) 3)
+				       (get-text-property 3 'button title))
+				  title
+				(wse--add-details
+				 #'wse--view-page-details
+				 (list (list (nth 2 page)) cutoff)
+				 (buttonize
+				  (cond
+				   ((wse--url-p title)
+				    (wse--pretty-url title))
+				   ((zerop (length title))
+				    (wse--pretty-url (nth 2 page)))
+				   (t
+				    (wse--adjust-title title (nth 2 page))))
+				  #'wse--browse (elt page 2)
+				  (elt page 2)))))
+		      (list "" ""))))
+   (list
+    (list
+     (caar (wse-sel "select count(*) from views where time > ?" (wse--24h)))
+     (buttonize "Total Views" #'wse--view-total-views (wse--24h))
+     (caar (wse-sel "select count(*) from views where time > ?" (wse--1h)))
+     (buttonize "Total Views" #'wse--view-total-views (wse--1h))))))
 
 (defun wse--sort-views (views)
   (sort views
