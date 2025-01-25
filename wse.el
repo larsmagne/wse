@@ -93,7 +93,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
     name))
 
 (defun wse--pretty-url (string)
-  (replace-regexp-in-string "\\`[a-z]+://" "" string))
+  (replace-regexp-in-string "\\`[a-z]+://\\(www[.]?\\)" "" string))
 
 (defun wse--possibly-buttonize (string)
   (if (wse--url-p string)
