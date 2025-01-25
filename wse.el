@@ -514,19 +514,19 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (make-vtable
      :face 'wse
      :columns '((:name "Time")
-		(:name "Blog" :max-width 15)
+		(:name "Page" :max-width 15)
 		(:name "IP" :max-width 20)
 		(:name "Referrer" :max-width 40)
 		(:name "Country")
 		(:name "User-Agent"))
      :objects (apply
 	       #'wse-sel
-	       (format "select time, blog, ip, referrer, country, user_agent from views where time > ? and page in (%s) order by time"
+	       (format "select time, page, ip, referrer, country, user_agent from views where time > ? and page in (%s) order by time"
 		       (wse--in urls))
 	       (or cutoff (wse--24h)) urls)
      :getter
      (lambda (elem column vtable)
-       (if (equal (vtable-column vtable column) "Referrer")
+       (if (member (vtable-column vtable column) '("Referrer" "Page"))
 	   (wse--possibly-buttonize (elt elem column))
 	 (elt elem column)))
      :keymap wse-mode-map)))
