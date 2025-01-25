@@ -156,9 +156,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (expand-file-name file (file-name-directory (locate-library "wse"))))
 
 (defun wse--adjust-title (title url)
-  (if (string-match "/category/" url)
-      (concat "Category: " title)
-    title))
+  (cond
+   ((string-match "/category/" url)
+    (concat "Category: " title))
+   ((string-match "/author/" url)
+    (concat "Author: " title))
+   (t
+    title)))
 
 ;; Update data.
 
@@ -782,21 +786,18 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	     counts)
     (nreverse (sort results #'car-less-than-car))))
 
+(defun wse--select-views (cutoff)
+  (seq-take
+   (wse--sort-views
+    (wse--transform-pages
+     (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc"
+	      cutoff)
+     cutoff))
+   wse-entries))
+	  
 (defun wse--get-page-table-data ()
-  (let* ((today
-	  (wse--sort-views
-	   (wse--transform-pages
-	    (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc"
-		     (wse--24h))
-	    (wse--24h))))
-	 (now
-	  (seq-take
-	   (wse--sort-views
-	    (wse--transform-pages
-	     (wse-sel "select count(page), title, page from views where time > ? group by page order by count(page) desc"
-		      (wse--1h))
-	     (wse--1h)))
-	   wse-entries)))
+  (let* ((today (wse--select-views (wse--24h)))
+	 (now (wse--select-views (wse--1h))))
     (nconc
      (cl-loop for i from 0 upto (1- wse-entries)
 	      when (or (elt today i) (elt now i))
