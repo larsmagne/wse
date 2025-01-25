@@ -762,27 +762,46 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(urls (make-hash-table :test #'equal))
 	(results nil))
     (cl-loop for (count title url) in data
-	     for page = (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url)
+	     for page = (replace-regexp-in-string
+			 "#.*\\'" ""
+			 (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url))
 	     when (string= (url-filename (url-generic-parse-url page))
 			   "/")
 	     do
-	     (cl-pushnew page (gethash "/" urls nil) :test #'equal)
 	     (setq page "/"
 		   title "Home Page")
 	     do
+	     (cl-pushnew url (gethash page urls nil) :test #'equal)
 	     (cl-incf (gethash page counts 0) count)
 	     (setf (gethash page titles) title))
     (maphash (lambda (page count)
 	       (let ((title (gethash page titles))
 		     (urls (gethash page urls)))
-		 (when urls
-		   (setq title
-			 (concat "🔽 "
-				 (buttonize
-				  title
-				  (lambda (_)
-				    (wse--view-page-details urls cutoff))))))
-		 (push (list count title page) results)))
+		 (push
+		  (list
+		   count
+		   (wse--add-details
+		    #'wse--view-page-details
+		    (list urls cutoff)
+		    (buttonize
+		     (cond
+		      ((and (length> urls 1)
+			    (equal title "Home Page"))
+		       (concat "🔽 "
+			       (buttonize
+				title
+				(lambda (_)
+				  (wse--view-page-details urls cutoff)))))
+		      ((wse--url-p title)
+		       (wse--pretty-url title))
+		      ((zerop (length title))
+		       (wse--pretty-url (car urls)))
+		      (t
+		       (wse--adjust-title title (car urls))))
+		     #'wse--browse (car urls)
+		     (car urls)))
+		   (car urls))
+		  results)))
 	     counts)
     (nreverse (sort results #'car-less-than-car))))
 
@@ -804,26 +823,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	    collect
 	    (cl-loop
 	     for page in (list (elt today i) (elt now i))
-	     for cutoff in (list (wse--24h) (wse--1h))
-	     for title = (nth 1 page)
 	     append (if page
-			(list (nth 0 page)
-			      (if (and (> (length title) 3)
-				       (get-text-property 3 'button title))
-				  title
-				(wse--add-details
-				 #'wse--view-page-details
-				 (list (list (nth 2 page)) cutoff)
-				 (buttonize
-				  (cond
-				   ((wse--url-p title)
-				    (wse--pretty-url title))
-				   ((zerop (length title))
-				    (wse--pretty-url (nth 2 page)))
-				   (t
-				    (wse--adjust-title title (nth 2 page))))
-				  #'wse--browse (elt page 2)
-				  (elt page 2)))))
+			(seq-take page 2)
 		      (list "" ""))))
    (list
     (list
