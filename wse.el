@@ -146,6 +146,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defun wse--in (list)
   (mapconcat (lambda (_) "?") list ","))
 
+(defun wse--local-time (time)
+  (format-time-string "%Y-%m-%d %H:%M:%S"
+		      (wse--parse-time time)))
+
 (defun wse--weekend-p (date)
   (memq
    (decoded-time-weekday
@@ -525,17 +529,17 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	       (format "select time, page, ip, referrer, country, user_agent from views where time > ? and page in (%s) order by time"
 		       (wse--in urls))
 	       (or cutoff (wse--24h)) urls)
-     :getter
-     (lambda (elem column vtable)
-       (cond
-	((member (vtable-column vtable column) '("Referrer" "Page"))
-	 (wse--possibly-buttonize (elt elem column)))
-	((equal (vtable-column vtable column) "Time")
-	 (format-time-string "%Y-%m-%d %H:%M:%S"
-			     (wse--parse-time (elt elem column))))
-	(t
-	 (elt elem column))))
+     :getter #'wse--details-get
      :keymap wse-mode-map)))
+
+(defun wse--details-get (elem column vtable)
+  (cond
+   ((member (vtable-column vtable column) '("Referrer" "Page"))
+    (wse--possibly-buttonize (elt elem column)))
+   ((equal (vtable-column vtable column) "Time")
+    (wse--local-time (elt elem column)))
+   (t
+    (elt elem column))))
 
 (defun wse--view-select-details (statement param)
   (switch-to-buffer "*WSE Details*")
@@ -556,11 +560,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	       (format "select time, page, referrer, ip, country, user_agent from views where time > ? and %s order by time"
 		       statement)
 	       (list (wse--24h) param))
-     :getter
-     (lambda (elem column vtable)
-       (if (member (vtable-column vtable column) '("Referrer" "Page"))
-	   (wse--possibly-buttonize (elt elem column))
-	 (elt elem column)))
+     :getter #'wse--details-get
      :keymap wse-mode-map)))
 
 (defun wse--view-referrer-details (urls)
@@ -578,11 +578,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		     (format "select time, referrer, page from referrers where time > ? and referrer in (%s) order by time"
 			     (wse--in urls))
 		     (wse--24h) urls)
-     :getter
-     (lambda (elem column vtable)
-       (if (equal (vtable-column vtable column) "Page")
-	   (wse--possibly-buttonize (elt elem column))
-	 (elt elem column)))
+     :getter #'wse--details-get
      :keymap wse-mode-map)))
 
 (defun wse--view-click-details (domain)
