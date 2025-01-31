@@ -527,9 +527,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	       (or cutoff (wse--24h)) urls)
      :getter
      (lambda (elem column vtable)
-       (if (member (vtable-column vtable column) '("Referrer" "Page"))
-	   (wse--possibly-buttonize (elt elem column))
-	 (elt elem column)))
+       (cond
+	((member (vtable-column vtable column) '("Referrer" "Page"))
+	 (wse--possibly-buttonize (elt elem column)))
+	((equal (vtable-column vtable column) "Time")
+	 (format-time-string "%Y-%m-%d %H:%M:%S"
+			     (wse--parse-time (elt elem column))))
+	(t
+	 (elt elem column))))
      :keymap wse-mode-map)))
 
 (defun wse--view-select-details (statement param)
@@ -630,7 +635,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
     (when-let (comments (wse-sel "select blog, status, author, content, post_id from comments where time > ? order by time desc"
 				 (wse--time (- (time-convert (current-time) 'integer)
-					       (* 4 60 60 24)))))
+					       (* 2 60 60 24)))))
       (goto-char (point-max))
       (insert "\n")
       (make-vtable
