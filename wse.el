@@ -534,7 +534,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--details-get (elem column vtable)
   (cond
-   ((member (vtable-column vtable column) '("Referrer" "Page"))
+   ((member (vtable-column vtable column) '("Referrer" "Page" "Click"))
     (wse--possibly-buttonize (elt elem column)))
    ((equal (vtable-column vtable column) "Time")
     (wse--local-time (elt elem column)))
@@ -594,9 +594,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(:name "Click"))
      :objects (wse-sel "select time, page, click from clicks where time > ? and domain = ? order by time"
 		       (wse--24h) domain)
-     :getter
-     (lambda (elem column _vtable)
-       (wse--possibly-buttonize (elt elem column)))
+     :getter #'wse--details-get
      :keymap wse-mode-map)))
 
 (defun wse--render ()
