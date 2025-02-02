@@ -252,10 +252,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				   -1))
 		       do
 		       (when (and (not (wse--bot-p user-agent))
-				  ;; Don't rate limit clicks.
-				  (or (wse--url-p click)
-				      (not (wse--rate-limit
-					    time ip click page))))
+				  (not (wse--rate-limit
+					time ip click page)))
 			 (wse--insert-data blog time
 					   click page referrer ip
 					   user-agent title))
