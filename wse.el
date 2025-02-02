@@ -229,6 +229,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (* 60 60))
       t)
      (t
+      (setf (gethash (list is-click ip url) wse--rate-limit-table) time)
       nil))))
 
 (defun wse--update-data (data &optional callback)
