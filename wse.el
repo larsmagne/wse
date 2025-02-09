@@ -396,24 +396,25 @@ I.e., \"google.com\" or \"google.co.uk\"."
 					next)))
 		 (lambda (status)
 		   (goto-char (point-min))
-		   (let ((country-code "-")
-			 (country-name nil))
-		     (when (and (not (plist-get status :error))
-				(search-forward "\n\n" nil t))
-		       (let ((json (json-parse-buffer)))
-			 (when (equal (gethash "status" json) "success")
-			   (setq country-code (gethash "countryCode" json)
-				 country-name (gethash "country" json)))))
-		     (kill-buffer (current-buffer))
-		     (wse-exec "update views set country = ? where id = ?"
-			       country-code next)
-		     (wse-exec "update country_counter set id = ?" next)
-		     (when (and country-name
-				(not (wse-sel "select * from countries where code = ?"
-					      country-code)))
-		       (wse-exec "insert into countries(code, name) values (?, ?)"
-				 country-code country-name))
-		     (setq id next)
+		   (unwind-protect
+		       (let ((country-code "-")
+			     (country-name nil))
+			 (when (and (not (plist-get status :error))
+				    (search-forward "\n\n" nil t))
+			   (let ((json (json-parse-buffer)))
+			     (when (equal (gethash "status" json) "success")
+			       (setq country-code (gethash "countryCode" json)
+				     country-name (gethash "country" json)))))
+			 (kill-buffer (current-buffer))
+			 (wse-exec "update views set country = ? where id = ?"
+				   country-code next)
+			 (wse-exec "update country_counter set id = ?" next)
+			 (when (and country-name
+				    (not (wse-sel "select * from countries where code = ?"
+						  country-code)))
+			   (wse-exec "insert into countries(code, name) values (?, ?)"
+				     country-code country-name))
+			 (setq id next))
 		     ;; The API is rate limited at 45 per minute, so
 		     ;; poll max 30 times per minute.
 		     (run-at-time 2 nil func)))
@@ -1258,7 +1259,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (let* ((data 
 	  (wse-sel "select count(country), code from views, countries where time > ? and views.country = countries.code group by country order by count(country) desc"
 		   (wse--24h)))
-	 (max (log (caar data)))
+	 (max (and data (log (caar data))))
 	 (svg (with-temp-buffer
 		(insert-file-contents (wse--file "world.svg"))
 		(car (dom-by-tag (libxml-parse-xml-region
