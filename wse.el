@@ -847,9 +847,15 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   (t
 	    (let ((v1-date (wse--url-date (nth 2 v1)))
 		  (v2-date (wse--url-date (nth 2 v2))))
-	      (if (and v1-date v2-date)
-		  (string< v2-date v1-date)
-		nil)))))))
+	      (cond
+	       ((and v1-date v2-date)
+		(string> v1-date v2-date))
+	       (v1-date
+		t)
+	       (v2-date
+		nil)
+	       (t
+		t))))))))
 
 (defun wse--url-date (url)
   (and (string-match "/[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9]/" url)
