@@ -457,6 +457,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defvar-keymap wse-mode-map
   :parent button-map
   "g" #'wse-revert
+  "c" #'wse-display-comments
   "d" #'wse-view-date
   "q" #'bury-buffer
   "w" #'wse-clicks-view-todays-media
@@ -510,6 +511,16 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (unless callback
       (user-error "No details here"))
     (funcall callback)))
+
+(defun wse-display-comments ()
+  "Display recent comments, even spam comments."
+  (interactive)
+  (switch-to-buffer "*WSE Details*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (wse--render-comments t)))
 
 (defun wse--view-page-details (urls &optional cutoff)
   (when (stringp urls)
@@ -630,37 +641,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
        (wse--possibly-buttonize (elt elem column)))
      :keymap wse-mode-map)
 
-    (when-let (comments (wse-sel "select blog, status, author, content, post_id from comments where time > ? order by time desc"
-				 (wse--time (- (time-convert (current-time) 'integer)
-					       (* 2 60 60 24)))))
-      (goto-char (point-max))
-      (insert "\n")
-      (make-vtable
-       :face 'wse
-       :use-header-line nil
-       :columns '((:name "Blog" :max-width 20)
-		  (:name "Status")
-		  (:name "Author" :max-width "400px")
-		  (:name "Comment" :max-width 60))
-       :objects comments
-       :getter
-       (lambda (elem column vtable)
-	 (cond
-	  ((equal (vtable-column vtable column) "Status")
-	   (if (equal (elt elem column) "1")
-	       ""
-	     (elt elem column)))
-	  ((equal (vtable-column vtable column) "Author")
-	   (mm-url-decode-entities-string (elt elem column)))
-	  ((equal (vtable-column vtable column) "Comment")
-	   (let ((url (format "https://%s/?p=%d"
-			      (elt elem 0) (elt elem 4))))
-	     (buttonize (mm-url-decode-entities-string
-			 (string-replace "\n" " " (elt elem column)))
-			#'wse--browse url url)))
-	  (t
-	   (elt elem column))))
-       :keymap wse-mode-map))
+    (goto-char (point-max))
+    (insert "\n")
+    (wse--render-comments)
 
     (goto-char (point-max))
     (insert "\n")
@@ -705,6 +688,42 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (wse--plot-history)
     (wse--plot-blogs-today)
     (goto-char (point-min))))
+
+(defun wse--render-comments (&optional display-spam)
+  (when-let (comments (wse-sel
+		       (format "select time, blog, status, author, content, post_id from comments where time > ? %s order by time desc"
+			       (if display-spam
+				   ""
+				 "and status <> 'spam'"))
+		       (wse--time (- (time-convert (current-time) 'integer)
+				     (* 2 60 60 24)))))
+    (make-vtable
+     :face 'wse
+     :use-header-line nil
+     :columns '((:name "Time")
+		(:name "Blog" :max-width 20)
+		(:name "Status")
+		(:name "Author" :max-width "400px")
+		(:name "Comment" :max-width 60))
+     :objects comments
+     :getter
+     (lambda (elem column vtable)
+       (cond
+	((equal (vtable-column vtable column) "Status")
+	 (if (equal (elt elem column) "1")
+	     ""
+	   (elt elem column)))
+	((equal (vtable-column vtable column) "Author")
+	 (mm-url-decode-entities-string (elt elem column)))
+	((equal (vtable-column vtable column) "Comment")
+	 (let ((url (format "https://%s/?p=%d"
+			    (elt elem 0) (elt elem 5))))
+	   (buttonize (mm-url-decode-entities-string
+		       (string-replace "\n" " " (elt elem column)))
+		      #'wse--browse url url)))
+	(t
+	 (elt elem column))))
+     :keymap wse-mode-map)))
 
 (defun wse--get-browser-table-data ()
   (let ((browsers (wse-sel "select count(browser), browser from views where time > ? group by browser order by count(browser) desc limit ?"

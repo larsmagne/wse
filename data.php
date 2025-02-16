@@ -55,11 +55,11 @@ $cutoff = date("Y-m-d H:i:s", time() - 7*24*60*60);
 $select = "select comment_id, comment_post_id, comment_author, comment_author_email, comment_author_url, comment_date_gmt, comment_content, comment_approved from $comment_table where ";
 
 if ($from_comment_id) {
-  $sql = $wpdb->prepare("$select comment_id > %s and comment_approved <> 'spam' order by comment_id",
+  $sql = $wpdb->prepare("$select comment_id > %s order by comment_id",
                         $from_comment_id);
   $results = $wpdb->get_results($sql);
 } else {
-  $results = $wpdb->get_results("$select comment_date > '$cutoff' and comment_approved <> 'spam' order by comment_id");
+  $results = $wpdb->get_results("$select comment_date > '$cutoff' order by comment_id");
 }
 
 $output["comments"] = $results;
