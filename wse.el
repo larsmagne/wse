@@ -695,8 +695,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			       (if display-spam
 				   ""
 				 "and status <> 'spam'"))
-		       (wse--time (- (time-convert (current-time) 'integer)
-				     (* 2 60 60 24)))))
+		       (if display-spam
+			   (wse--24h)
+			 (wse--time (- (time-convert (current-time) 'integer)
+				       (* 2 60 60 24))))))
     (make-vtable
      :face 'wse
      :use-header-line display-spam
