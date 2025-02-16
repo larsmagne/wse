@@ -699,7 +699,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				     (* 2 60 60 24)))))
     (make-vtable
      :face 'wse
-     :use-header-line nil
+     :use-header-line display-spam
      :columns '((:name "Time")
 		(:name "Blog" :max-width 20)
 		(:name "Status")
