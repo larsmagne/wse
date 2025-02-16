@@ -713,6 +713,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (if (equal (elt elem column) "1")
 	     ""
 	   (elt elem column)))
+	((equal (vtable-column vtable column) "Time")
+	 (wse--local-time (elt elem column)))
 	((equal (vtable-column vtable column) "Author")
 	 (mm-url-decode-entities-string (elt elem column)))
 	((equal (vtable-column vtable column) "Comment")
