@@ -703,8 +703,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :columns '((:name "Time")
 		(:name "Blog" :max-width 20)
 		(:name "Status")
-		(:name "Author" :max-width "400px")
-		(:name "Comment" :max-width 60))
+		(:name "Author" :max-width "200px")
+		(:name "Comment" :max-width 100))
      :objects comments
      :getter
      (lambda (elem column vtable)
