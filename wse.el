@@ -721,7 +721,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (mm-url-decode-entities-string (elt elem column)))
 	((equal (vtable-column vtable column) "Comment")
 	 (let ((url (format "https://%s/?p=%d"
-			    (elt elem 0) (elt elem 5))))
+			    (elt elem 1) (elt elem 5))))
 	   (buttonize (mm-url-decode-entities-string
 		       (string-replace "\n" " " (elt elem column)))
 		      #'wse--browse url url)))
