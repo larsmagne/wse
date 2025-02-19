@@ -791,12 +791,15 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	     for page = (replace-regexp-in-string
 			 "#.*\\'" ""
 			 (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url))
-	     when (string= (url-filename (url-generic-parse-url page))
-			   "/")
 	     do
-	     (setq page "/"
-		   title "Home Page")
-	     do
+	     (cond
+	      ((string= (url-filename (url-generic-parse-url page)) "/")
+	       (setq page "/"
+		     title "Home Page"))
+	      ((string-match-p "\\`/\\(page/[0-9+]/\\)?[?]s="
+			       (url-filename (url-generic-parse-url page)))
+	       (setq page "/s"
+		     title "Search")))
 	     (cl-pushnew url (gethash page urls nil) :test #'equal)
 	     (cl-incf (gethash page counts 0) count)
 	     (setf (gethash page titles) title))
@@ -812,7 +815,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		    (buttonize
 		     (cond
 		      ((and (length> urls 1)
-			    (equal title "Home Page"))
+			    (or (equal title "Home Page")
+				(equal title "Search")))
 		       (concat "🔽 "
 			       (buttonize
 				title
