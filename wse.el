@@ -712,9 +712,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
      (lambda (elem column vtable)
        (cond
 	((equal (vtable-column vtable column) "Status")
-	 (if (equal (elt elem column) "1")
-	     ""
-	   (elt elem column)))
+	 (cond
+	  ((equal (elt elem column) "1")
+	   "")
+	  ((equal (elt elem column) "0")
+	   "Pending")
+	  (t
+	   (elt elem column))))
 	((equal (vtable-column vtable column) "Time")
 	 (wse--local-time (elt elem column)))
 	((equal (vtable-column vtable column) "Author")
