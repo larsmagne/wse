@@ -1305,14 +1305,15 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				  (point) (point-max))
 				 'svg)))))
     (dom-set-attribute svg 'fill "#202020")
-    (cl-loop for (views code) in data
-	     for elems = (dom-by-class svg (concat "\\`" code "\\'"))
-	     do (cl-loop for elem in elems
-			 for col = (+ 40 (truncate
-					  (* (/ (log views) max) 210)))
-			 do (dom-set-attribute
-			     elem 'fill
-			     (format "#%02x%02x%02x" col col col))))
+    (unless (zerop max)
+      (cl-loop for (views code) in data
+	       for elems = (dom-by-class svg (concat "\\`" code "\\'"))
+	       do (cl-loop for elem in elems
+			   for col = (+ 40 (truncate
+					    (* (/ (log views) max) 210)))
+			   do (dom-set-attribute
+			       elem 'fill
+			       (format "#%02x%02x%02x" col col col)))))
     svg))
 
 (provide 'wse)
