@@ -73,7 +73,7 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defun wse--bot-p (user-agent)
   (let ((case-fold-search t))
     (string-match-p
-     "bot/\\|spider\\b\\|DuckDuckBot\\|meta-externalagent\\|HeadlessChrome"
+     "bot/\\|spider\\b\\|DuckDuckBot\\|meta-externalagent\\|HeadlessChrome\\|Google-Read-Aloud"
      user-agent)))
 
 (defun wse--host (url)
