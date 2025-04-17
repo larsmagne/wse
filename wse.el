@@ -793,9 +793,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(urls (make-hash-table :test #'equal))
 	(results nil))
     (cl-loop for (count title url) in data
-	     for page = (replace-regexp-in-string
-			 "#.*\\'" ""
-			 (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url))
+	     for page =
+	     (replace-regexp-in-string
+	      "#.*\\'" ""
+	      (replace-regexp-in-string
+	       "\\?fbclid.*" ""
+	       (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url)))
 	     do
 	     (cond
 	      ((string= (url-filename (url-generic-parse-url page)) "/")
