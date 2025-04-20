@@ -711,27 +711,33 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :objects comments
      :getter
      (lambda (elem column vtable)
-       (cond
-	((equal (vtable-column vtable column) "Status")
-	 (cond
-	  ((equal (elt elem column) "1")
-	   "")
-	  ((equal (elt elem column) "0")
-	   "Pending")
-	  (t
-	   (elt elem column))))
-	((equal (vtable-column vtable column) "Time")
-	 (wse--local-time (elt elem column)))
-	((equal (vtable-column vtable column) "Author")
-	 (mm-url-decode-entities-string (elt elem column)))
-	((equal (vtable-column vtable column) "Comment")
-	 (let ((url (format "https://%s/?p=%d"
-			    (elt elem 1) (elt elem 5))))
-	   (buttonize (mm-url-decode-entities-string
-		       (string-replace "\n" " " (elt elem column)))
-		      #'wse--browse url url)))
-	(t
-	 (elt elem column))))
+       (wse--add-details
+	;; Make the `v' command go to the ewp buffer for comments (so
+	;; that you can reply to them and stuff).  This requires the
+	;; ewp package.
+	'ewp-list-comments
+	(list (nth 1 elem))
+	(cond
+	 ((equal (vtable-column vtable column) "Status")
+	  (cond
+	   ((equal (elt elem column) "1")
+	    "")
+	   ((equal (elt elem column) "0")
+	    "Pending")
+	   (t
+	    (elt elem column))))
+	 ((equal (vtable-column vtable column) "Time")
+	  (wse--local-time (elt elem column)))
+	 ((equal (vtable-column vtable column) "Author")
+	  (mm-url-decode-entities-string (elt elem column)))
+	 ((equal (vtable-column vtable column) "Comment")
+	  (let ((url (format "https://%s/?p=%d"
+			     (elt elem 1) (elt elem 5))))
+	    (buttonize (mm-url-decode-entities-string
+			(string-replace "\n" " " (elt elem column)))
+		       #'wse--browse url url)))
+	 (t
+	  (elt elem column)))))
      :keymap wse-mode-map)))
 
 (defun wse--get-browser-table-data ()
