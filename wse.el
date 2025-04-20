@@ -427,7 +427,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   for data =
 	   (with-temp-buffer
 	     (call-process (wse--file "detect-browser.pl") nil t nil
-			   user-agent)
+			   (if (zerop (length user-agent))
+			       "Mozilla"
+			     user-agent))
 	     (goto-char (point-min))
 	     (json-parse-buffer :null-object nil))
 	   do (wse-exec "update views set browser = ?, os = ?, type = ? where id = ?"
