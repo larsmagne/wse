@@ -805,7 +805,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	     (replace-regexp-in-string
 	      "#.*\\'" ""
 	      (replace-regexp-in-string
-	       "\\?fbclid.*" ""
+	       "\\?fbclid.*\\|\\?utm_.*" ""
 	       (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url)))
 	     do
 	     (cond
@@ -1316,7 +1316,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				  (point) (point-max))
 				 'svg)))))
     (dom-set-attribute svg 'fill "#202020")
-    (unless (zerop max)
+    (when (and max
+	       (not (zerop max)))
       (cl-loop for (views code) in data
 	       for elems = (dom-by-class svg (concat "\\`" code "\\'"))
 	       do (cl-loop for elem in elems
