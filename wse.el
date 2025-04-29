@@ -805,8 +805,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	     (replace-regexp-in-string
 	      "#.*\\'" ""
 	      (replace-regexp-in-string
-	       "\\?fbclid.*\\|\\?utm_.*" ""
-	       (replace-regexp-in-string "/page/[0-9]+/\\'" "/" url)))
+	       "/page/[0-9]+/\\'" "/"
+	       (replace-regexp-in-string
+		"\\?fbclid.*\\|\\?from=.*utm_.*\\|\\?utm_.*" ""
+		url)))
 	     do
 	     (cond
 	      ((string= (url-filename (url-generic-parse-url page)) "/")
