@@ -913,17 +913,31 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(apply callback params))))
 
 (defun wse--add-media-clicks (clicks)
-  (nreverse
-   (sort (cons
-	  (list (caar (apply
-		       #'wse-sel
-		       (format "select count(*) from clicks where time > ? and domain in (%s)"
-			       (wse--in wse-blogs))
-		       (wse--24h) wse-blogs))
-		(concat
-		 "🔽 " (buttonize "Media" #'wse--view-clicks wse-blogs)))
-	  clicks)
-	 #'car-less-than-car)))
+  (let ((images nil)
+	(videos nil))
+    (cl-loop for (click)
+	     in
+	     (apply
+	      #'wse-sel
+	      (format
+	       "select click from clicks where time > ? and domain in (%s)"
+	       (wse--in wse-blogs))
+	      (wse--24h) wse-blogs)
+	     if (string-match-p "[.]mp4\\'" click)
+	     do (push click videos)
+	     else
+	     do (push click images))
+    (when images
+      (push (list (length images)
+		  (concat
+		   "🔽 " (buttonize "Images" #'wse--view-clicks images)))
+	    clicks))
+    (when videos
+      (push (list (length videos)
+		  (concat
+		   "🔽 " (buttonize "Videos" #'wse--view-clicks videos)))
+	    clicks))
+    (nreverse (sort clicks #'car-less-than-car))))
 
 (defun wse--get-click-table-data ()
   (let* ((time (wse--24h))
@@ -1021,11 +1035,18 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :face 'wse
      :columns '((:name "" :align 'right)
 		(:name "Clicks"))
-     :objects (apply
-	       #'wse-sel
-	       (format "select count(click), click from clicks where time > ? and domain in (%s) group by click order by count(click) desc"
-		       (wse--in domains))
-	       (wse--24h) domains)
+     :objects (if (string-match "\\`http" (car domains))
+		  ;; In this case it's really a list of URLs, not domains.
+		  (apply
+		   #'wse-sel
+		   (format "select count(click), click from clicks where time > ? and click in (%s) group by click order by count(click) desc"
+			   (wse--in domains))
+		   (wse--24h) domains)
+		(apply
+		 #'wse-sel
+		 (format "select count(click), click from clicks where time > ? and domain in (%s) group by click order by count(click) desc"
+			 (wse--in domains))
+		 (wse--24h) domains))
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Clicks")
