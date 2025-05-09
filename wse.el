@@ -218,7 +218,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--rate-limit (time ip click page)
   (let* ((is-click (not (zerop (length click))))
-	 (url (if is-click click page))
+	 (url (wse--clean-url (if is-click click page)))
 	 (prev (gethash (list is-click ip url) wse--rate-limit-table)))
     (cond
      ((not prev)
@@ -795,20 +795,23 @@ I.e., \"google.com\" or \"google.co.uk\"."
       nil
     elem))
 
+(defun wse--clean-url (url)
+  (and url
+       (replace-regexp-in-string
+	"#.*\\'" ""
+	(replace-regexp-in-string
+	 "/page/[0-9]+/\\'" "/"
+	 (replace-regexp-in-string
+	  "\\?fbclid.*\\|\\?from=.*utm_.*\\|\\?utm_.*" ""
+	  url)))))
+
 (defun wse--transform-pages (data cutoff)
   (let ((counts (make-hash-table :test #'equal))
 	(titles (make-hash-table :test #'equal))
 	(urls (make-hash-table :test #'equal))
 	(results nil))
     (cl-loop for (count title url) in data
-	     for page =
-	     (replace-regexp-in-string
-	      "#.*\\'" ""
-	      (replace-regexp-in-string
-	       "/page/[0-9]+/\\'" "/"
-	       (replace-regexp-in-string
-		"\\?fbclid.*\\|\\?from=.*utm_.*\\|\\?utm_.*" ""
-		url)))
+	     for page = (wse--clean-url url)
 	     do
 	     (cond
 	      ((string= (url-filename (url-generic-parse-url page)) "/")
