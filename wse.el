@@ -1368,8 +1368,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (setq truncate-lines t)
     (make-vtable
      :face 'wse
-     :columns '((:name "Count")
-		(:name "User-Agent"))
+     :columns '("Count" "User-Agent")
      :objects (wse-sel
 	       "select count(*), user_agent from views where time > ? group by user_agent order by count(*) desc"
 	       (wse--24h)))))
