@@ -499,6 +499,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (let ((inhibit-read-only t))
     (erase-buffer)
     (special-mode)
+    (setq truncate-lines t)
     (wse--view-total-views nil date)
     (goto-char (point-max))
     (insert "\n")
