@@ -467,6 +467,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   "d" #'wse-view-date
   "q" #'bury-buffer
   "w" #'wse-clicks-view-todays-media
+  "u" #'wse-view-user-agents
   "v" #'wse-view-details)
 
 (define-derived-mode wse-mode special-mode "WSE"
@@ -1356,6 +1357,22 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			       elem 'fill
 			       (format "#%02x%02x%02x" col col col)))))
     svg))
+
+(defun wse-view-user-agents ()
+  "Display today's User-Agent strings."
+  (interactive)
+  (switch-to-buffer "*WSE User-Agents*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (make-vtable
+     :face 'wse
+     :columns '((:name "Count")
+		(:name "User-Agent"))
+     :objects (wse-sel
+	       "select count(*), user_agent from views where time > ? group by user_agent order by count(*) desc"
+	       (wse--24h)))))
 
 (provide 'wse)
 
