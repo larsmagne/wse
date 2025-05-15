@@ -1358,20 +1358,35 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			       (format "#%02x%02x%02x" col col col)))))
     svg))
 
+(defvar-keymap wse-user-agents-mode-map
+  :parent button-map
+  "d" #'wse-user-agent-delete
+  "q" #'bury-buffer)
+
+(define-derived-mode wse-user-agents-mode special-mode
+  :interactive nil
+  (setq truncate-lines t))
+
 (defun wse-view-user-agents ()
   "Display today's User-Agent strings."
   (interactive)
   (switch-to-buffer "*WSE User-Agents*")
   (let ((inhibit-read-only t))
     (erase-buffer)
-    (special-mode)
-    (setq truncate-lines t)
+    (wse-user-agents-mode)
     (make-vtable
      :face 'wse
      :columns '("Count" "User-Agent")
      :objects (wse-sel
 	       "select count(*), user_agent from views where time > ? group by user_agent order by count(*) desc"
 	       (wse--24h)))))
+
+(defun wse-user-agent-delete (user-agent)
+  "Delete the User-Agent under point."
+  (interactive (list (cadr (vtable-current-object))))
+  (when (yes-or-no-p (format "Delete %s? " user-agent))
+    (wse-exec "delete from views where user_agent = ?" user-agent)
+    (vtable-remove-object (vtable-current-table) (vtable-current-object))))
 
 (provide 'wse)
 
