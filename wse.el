@@ -286,7 +286,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (wse-exec "create table if not exists blogs (blog text primary key, last_id integer, last_comment_id integer)")
 
     ;; Statistics.
-    (wse-exec "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text, referrer text, browser text, os text, type text)")
+    (wse-exec "create table if not exists views (id integer primary key, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text, referrer text, browser text, os text, type text, unique_page text)")
     (wse-exec "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
     (wse-exec "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
 
@@ -320,9 +320,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   blog time click (wse--host click) page))
       ;; Insert into views.
       (wse-exec
-       "insert into views(blog, date, time, page, ip, user_agent, title, country, referrer) values(?, ?, ?, ?, ?, ?, ?, ?, ?)"
+       "insert into views(blog, date, time, page, ip, user_agent, title, country, referrer, unique_page) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
        blog (substring time 0 10) time page ip user-agent title ""
-       referrer)
+       referrer (wse--clean-url page))
       ;; Check whether to register a referrer.
       (when (and (wse--url-p referrer)
 		 (not (equal (wse--host referrer) blog)))
@@ -468,7 +468,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
   "q" #'bury-buffer
   "w" #'wse-clicks-view-todays-media
   "u" #'wse-view-user-agents
-  "v" #'wse-view-details)
+  "v" #'wse-view-details
+  "t" #'wse-view-top-pages)
 
 (define-derived-mode wse-mode special-mode "WSE"
   "Major mode for listing Wordpress statistics."
@@ -1388,6 +1389,32 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (when (yes-or-no-p (format "Delete %s? " user-agent))
     (wse-exec "delete from views where user_agent = ?" user-agent)
     (vtable-remove-object (vtable-current-table) (vtable-current-object))))
+
+(defun wse--update-unique-page ()
+  (cl-loop for (id page) in (wse-sel "select id, page from views")
+	   do (wse-exec "update views set unique_page = ? where id = ?"
+			(wse--clean-url page) id )))
+
+(defun wse-view-top-pages ()
+  "View the 100 most popular pages."
+  (interactive)
+  (switch-to-buffer "*WSE Top*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (make-vtable
+     :face 'wse
+     :columns '("Count" "Page")
+     :objects (wse-sel "select count(unique_page), unique_page, title from views group by unique_page order by count(unique_page) desc, id limit 100")
+     :getter
+     (lambda (elem column vtable)
+       (if (equal (vtable-column vtable column) "Page")
+	   (buttonize (wse--adjust-title (elt elem 2)
+					 (elt elem column))
+		      #'wse--browse (elt elem column) (elt elem column))
+	 (elt elem column)))
+     :keymap wse-mode-map)))
 
 (provide 'wse)
 
