@@ -1215,6 +1215,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     "Kagi"
     "Ecosia"
     "Mojeek"
+    ("pch" "PCH" "search.pch.com")
     ("brave" "Brave" "search.brave.com")
     ("yahoo" "Yahoo" "search.yahoo.com")
     ("aol" "AOL" "search.aol.com")))
