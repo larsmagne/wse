@@ -741,8 +741,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 ((equal (vtable-column vtable column) "Comment")
 	  (let ((url (format "https://%s/?p=%d"
 			     (elt elem 1) (elt elem 5))))
-	    (buttonize (mm-url-decode-entities-string
-			(string-replace "\n" " " (elt elem column)))
+	    (buttonize (string-replace
+			"\n" " "
+			(with-temp-buffer
+			  (insert (elt elem column))
+			  (shr-render-region (point-min) (point-max))
+			  (buffer-substring-no-properties
+			   (point-min) (point-max))))
 		       #'wse--browse url url)))
 	 (t
 	  (elt elem column)))))
