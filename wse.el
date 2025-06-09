@@ -40,6 +40,10 @@ This should be a list of names (like \"foo.org\" and not URLs.")
 (defvar wse-entries 12
   "The number of entries to display.")
 
+(defvar wse-ip-blocklist nil
+  "List of IP addresses to ignore.
+This can be useful if you want to ignore your own host.")
+
 ;; Internal variables.
 (defvar wse--db nil)
 (defvar wse--filling-country nil)
@@ -309,6 +313,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (when (eq title :null)
     (setq title ""))
   (when (and (wse--url-p page)
+	     ;; Allow filtering out yourself.
+	     (not (member ip wse-ip-blocklist))
 	     ;; Somebody may be calling the tracking PHP script from a
 	     ;; third party site -- for instance Google Translate --
 	     ;; but we filter these out.
