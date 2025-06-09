@@ -308,7 +308,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
   ;; Titles aren't set for clicks.
   (when (eq title :null)
     (setq title ""))
-  (when (wse--url-p page)
+  (when (and (wse--url-p page)
+	     ;; Somebody may be calling the tracking PHP script from a
+	     ;; third party site -- for instance Google Translate --
+	     ;; but we filter these out.
+	     (member (url-host (url-generic-parse-url page))
+		     wse-blogs))
     (if (wse--url-p click)
 	;; Register a click if it's not going to the current blog, or
 	;; whether it's going to a media URL of some kind (image/mp4/etc).
