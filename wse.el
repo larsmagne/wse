@@ -1438,7 +1438,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	;; We have a complete URL.
 	(ewp-possibly-make-pingback post-url url)
       ;; We have an URL to just the domain, so find the actual URL.
-      )))
+      (open-webs
+       (list
+	(format "https://ahrefs.com/backlink-checker/?input=%s&mode=exact"
+		(browse-url-encode-url post-url))
+	url))
+      (ewp-possibly-make-pingback post-url (read-string "Pingback URL: ")))))
 
 (provide 'wse)
 
