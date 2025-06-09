@@ -469,6 +469,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   "w" #'wse-clicks-view-todays-media
   "u" #'wse-view-user-agents
   "v" #'wse-view-details
+  "p" #'wse-make-pingback
   "t" #'wse-view-top-pages)
 
 (define-derived-mode wse-mode special-mode "WSE"
@@ -1421,6 +1422,23 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		      #'wse--browse (elt elem column) (elt elem column))
 	 (elt elem column)))
      :keymap wse-mode-map)))
+
+(defun wse-make-pingback ()
+  "Make a pingback for the current URL pairs."
+  (interactive)
+  (let* ((object (vtable-current-object))
+	 (url (nth 1 object))
+	 (post-url (nth 2 object)))
+    (when (or (not url)
+	      (not post-url)
+	      (not (string-match "\\`https?:" url))
+	      (not (string-match "\\`https?:" post-url)))
+      (user-error "Not an URL pair on the current line"))
+    (if (length> (url-filename (url-generic-parse-url url)) 1)
+	;; We have a complete URL.
+	(ewp-possibly-make-pingback post-url url)
+      ;; We have an URL to just the domain, so find the actual URL.
+      )))
 
 (provide 'wse)
 
