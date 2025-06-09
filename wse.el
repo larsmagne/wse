@@ -616,7 +616,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :getter #'wse--details-get
      :keymap wse-mode-map)))
 
-(defun wse--view-click-details (domain)
+(defun wse--view-click-details (domain &optional clicks)
   (switch-to-buffer "*WSE Details*")
   (let ((inhibit-read-only t))
     (erase-buffer)
@@ -627,8 +627,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :columns '((:name "Time")
 		(:name "Page" :max-width 40)
 		(:name "Click"))
-     :objects (wse-sel "select time, page, click from clicks where time > ? and domain = ? order by time"
-		       (wse--24h) domain)
+     :objects (if clicks
+		  (apply #'wse-sel (format "select time, page, click from clicks where time > ? and click in (%s) order by time"
+					   (wse--in clicks))
+			 (wse--24h) clicks)
+		(wse-sel "select time, page, click from clicks where time > ? and domain = ? order by time"
+			 (wse--24h) domain))
      :getter #'wse--details-get
      :keymap wse-mode-map)))
 
@@ -955,13 +959,17 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	     do (push click images))
     (when images
       (push (list (length images)
-		  (concat
-		   "🔽 " (buttonize "Images" #'wse--view-clicks images)))
+		  (wse--add-details
+		   #'wse--view-click-details (list nil images)
+		   (concat
+		    "🔽 " (buttonize "Images" #'wse--view-clicks images))))
 	    clicks))
     (when videos
       (push (list (length videos)
-		  (concat
-		   "🔽 " (buttonize "Videos" #'wse--view-clicks videos)))
+		  (wse--add-details
+		   #'wse--view-click-details (list nil videos)
+		   (concat
+		    "🔽 " (buttonize "Videos" #'wse--view-clicks videos))))
 	    clicks))
     (nreverse (sort clicks #'car-less-than-car))))
 
@@ -995,6 +1003,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	       (if click
 		   (list (car click)
 			 (cond
+			  ((get-text-property 1 'wse--details (nth 1 click))
+			   (nth 1 click))
 			  ((not (nth 2 click))
 			   (wse--add-details
 			    #'wse--view-click-details (list (nth 1 click))
@@ -1005,11 +1015,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			    (nth 3 click)))
 			  (t
 			   (concat
-			    "🔽 " (buttonize
-				   (cadr click)
-				   (lambda (domain)
-				     (wse--view-clicks domain))
-				   (cadr click))))))
+			    "🔽 " (wse--add-details
+				   #'wse--view-click-details (list (cadr click))
+				   (buttonize
+				    (cadr click)
+				    (lambda (domain)
+				      (wse--view-clicks domain))
+				    (cadr click)))))))
 		 '("" ""))))
 	       
      (list
