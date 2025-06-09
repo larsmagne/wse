@@ -1119,7 +1119,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Referrers")
-	   (wse--possibly-buttonize (elt elem column))
+	   (wse--add-details
+	    #'wse--view-referrer-details (list (list (elt elem column)))
+	    (wse--possibly-buttonize (elt elem column)))
 	 (elt elem column)))
      :keymap wse-mode-map)))
 
