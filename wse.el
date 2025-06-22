@@ -1462,6 +1462,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (if (length> (url-filename (url-generic-parse-url url)) 1)
 	;; We have a complete URL.
 	(ewp-possibly-make-pingback post-url url)
+      ;; Check whether there is a pingback from this domain already.
+      (when (ewp-check-pingback post-url url)
+	(user-error "Already a pingback from this domain"))
       ;; We have an URL to just the domain, so find the actual URL.
       (open-webs
        (list
