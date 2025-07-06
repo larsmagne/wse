@@ -1448,11 +1448,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (elt elem column)))
      :keymap wse-mode-map)))
 
-(defun wse-make-pingback ()
+(defun wse-make-pingback (&optional prompt-for-url)
   "Make a pingback for the current URL pairs."
-  (interactive)
+  (interactive "P")
   (let* ((object (vtable-current-object))
-	 (url (nth 1 object))
+	 (url (if prompt-for-url
+		  (read-string "Pingback URL: ")
+		(nth 1 object)))
 	 (post-url (nth 2 object)))
     (when (or (not url)
 	      (not post-url)
