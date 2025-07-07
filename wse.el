@@ -44,6 +44,9 @@ This should be a list of names (like \"foo.org\" and not URLs.")
   "List of IP addresses to ignore.
 This can be useful if you want to ignore your own host.")
 
+(defvar wse-main-post-alist nil
+  "Alist of blog addresses and \"main post\" post IDs.")
+
 ;; Internal variables.
 (defvar wse--db nil)
 (defvar wse--filling-country nil)
@@ -1474,6 +1477,25 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(browse-url-encode-url post-url))
 	url))
       (ewp-possibly-make-pingback post-url (read-string "Pingback URL: ")))))
+
+(defun wse-make-main-pingback (&optional prompt-for-url)
+  "Make a pingback to the \"main\" page on the blog."
+  (interactive "P")
+  (let* ((object (vtable-current-object))
+	 (url (if prompt-for-url
+		  (read-string "Pingback URL: ")
+		(nth 1 object)))
+	 (post-url (nth 2 object)))
+    (when (or (not url)
+	      (not post-url)
+	      (not (string-match "\\`https?:" url))
+	      (not (string-match "\\`https?:" post-url)))
+      (user-error "Not an URL pair on the current line"))
+    (let* ((address (url-host (url-generic-parse-url post-url)))
+	   (post-id (cadr (assoc address wse-main-post-alist))))
+      (unless post-id
+	(user-error "No main post ID for blog %s" address))
+      (ewp-possibly-make-pingback post-url url (format "%s" post-id)))))
 
 (provide 'wse)
 
