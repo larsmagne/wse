@@ -322,7 +322,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	     ;; third party site -- for instance Google Translate --
 	     ;; but we filter these out.
 	     (member (url-host (url-generic-parse-url page))
-		     wse-blogs))
+		     wse-blogs)
+	     ;; Filter out AWS/Azure/etc.
+	     (not (wse--data-center-ip-p ip)))
     (if (wse--url-p click)
 	;; Register a click if it's not going to the current blog, or
 	;; whether it's going to a media URL of some kind (image/mp4/etc).
@@ -1496,6 +1498,44 @@ I.e., \"google.com\" or \"google.co.uk\"."
       (unless post-id
 	(user-error "No main post ID for blog %s" address))
       (ewp-possibly-make-pingback post-url url (format "%s" post-id)))))
+
+(defvar wse--cidrs nil)
+
+(defun wse--data-center-ip-p (address)
+  (unless wse--cidrs
+    (setq wse--cidrs (make-hash-table))
+    (wse--download-data-center-file))
+  (cl-loop with a = (wse--ip-to-int address)
+	   for length from 32 downto 1
+	   for bits = (- (1- (expt 2 32))
+			 (1- (expt 2 (- 32 length))))
+	   for center = (gethash (logand a bits) wse--cidrs)
+	   when center
+	   return center))
+
+(defun wse--download-data-center-file ()
+  (with-current-buffer (url-retrieve-synchronously
+			"https://raw.githubusercontent.com/jhassine/server-ip-addresses/master/data/datacenters.csv")
+    (goto-char (point-min))
+    (when (search-forward "\n\n" nil t)
+      (while (not (eobp))
+	(let* ((line
+		(mapcar
+		 (lambda (elem)
+		   (string-replace "\"" "" elem))
+		 (split-string (buffer-substring (pos-bol) (pos-eol)) ",")))
+	       (cidr (split-string (car line) "/")))
+	  (when (length= cidr 2)
+	    (setf (gethash (wse--ip-to-int (car cidr)) wse--cidrs)
+		  (cons (car line) (nth 3 line)))))
+	(forward-line 1)))
+    (kill-buffer (current-buffer))))
+
+(defun wse--ip-to-int (ip)
+  (cl-loop with int = 0
+	   for bit in (mapcar #'string-to-number (split-string ip "\\."))
+	   do (setq int (+ (ash int 8) bit))
+	   finally (return int)))
 
 (provide 'wse)
 
