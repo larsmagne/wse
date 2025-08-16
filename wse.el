@@ -1513,7 +1513,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   ;; We see whether what we found had the same CIDR prefix
 	   ;; length as we're looking for.
 	   when (and center (= length (car center)))
-	   return center))
+	   return (nth 1 center)))
 
 (defun wse--download-data-center-file ()
   (with-current-buffer (url-retrieve-synchronously
