@@ -1515,24 +1515,26 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   when (and center (= length (car center)))
 	   return (nth 1 center)))
 
+;; Fetched from
+;; https://raw.githubusercontent.com/jhassine/server-ip-addresses/master/data/datacenters.csv
+
 (defun wse--download-data-center-file ()
-  (with-current-buffer (url-retrieve-synchronously
-			"https://raw.githubusercontent.com/jhassine/server-ip-addresses/master/data/datacenters.csv")
-    (goto-char (point-min))
-    (when (search-forward "\n\n" nil t)
-      (while (not (eobp))
-	(let* ((line
-		(mapcar
-		 (lambda (elem)
-		   (string-replace "\"" "" elem))
-		 (split-string (buffer-substring (pos-bol) (pos-eol)) ",")))
-	       (cidr (split-string (car line) "/")))
-	  (when (length= cidr 2)
-	    (setf (gethash (wse--ip-to-int (car cidr)) wse--cidrs)
-		  (list (string-to-number (cadr cidr))
-			(nth 3 line) (car line)))))
-	(forward-line 1)))
-    (kill-buffer (current-buffer))))
+  (with-temp-buffer
+    (insert-file-contents
+     (expand-file-name "datacenters.csv"
+		       (file-name-directory (find-library-name "wse"))))
+    (while (not (eobp))
+      (let* ((line
+	      (mapcar
+	       (lambda (elem)
+		 (string-replace "\"" "" elem))
+	       (split-string (buffer-substring (pos-bol) (pos-eol)) ",")))
+	     (cidr (split-string (car line) "/")))
+	(when (length= cidr 2)
+	  (setf (gethash (wse--ip-to-int (car cidr)) wse--cidrs)
+		(list (string-to-number (cadr cidr))
+		      (nth 3 line) (car line)))))
+      (forward-line 1))))
 
 (defun wse--ip-to-int (ip)
   (cl-loop with int = 0
