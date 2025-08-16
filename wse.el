@@ -1510,7 +1510,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   for bits = (- (1- (expt 2 32))
 			 (1- (expt 2 (- 32 length))))
 	   for center = (gethash (logand a bits) wse--cidrs)
-	   when center
+	   ;; We see whether what we found had the same CIDR prefix
+	   ;; length as we're looking for.
+	   when (and center (= length (car center)))
 	   return center))
 
 (defun wse--download-data-center-file ()
@@ -1527,7 +1529,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	       (cidr (split-string (car line) "/")))
 	  (when (length= cidr 2)
 	    (setf (gethash (wse--ip-to-int (car cidr)) wse--cidrs)
-		  (cons (car line) (nth 3 line)))))
+		  (list (string-to-number (cadr cidr))
+			(nth 3 line) (car line)))))
 	(forward-line 1)))
     (kill-buffer (current-buffer))))
 
