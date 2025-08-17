@@ -1280,6 +1280,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
       (cond
        ((string-match-p "[.]pinterest[.]com/\\'" url)
 	"Pinterest")
+       ((string-match-p "mastodon\\|mathstodon\\|masto\\b\\|fosstodon" url)
+	"Mastodon")
        ((string-match-p "[.]?bsky[.][a-z]+/\\'" url)
 	"Bluesky")
        ((string-match-p "[a-z]+[.]wikipedia[.]org/\\'" url)
