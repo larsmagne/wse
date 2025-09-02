@@ -37,6 +37,10 @@
   "A list of blogs to collect statistics from.
 This should be a list of names (like \"foo.org\" and not URLs.")
 
+(defvar wse-blog-aliases nil
+  "A list of alternate blog names.
+This is useful if some sites have several names.")
+
 (defvar wse-entries 12
   "The number of entries to display.")
 
@@ -321,14 +325,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	     ;; Somebody may be calling the tracking PHP script from a
 	     ;; third party site -- for instance Google Translate --
 	     ;; but we filter these out.
-	     (member (url-host (url-generic-parse-url page))
-		     wse-blogs)
+	     (member (url-host (url-generic-parse-url page)) wse-blogs)
 	     ;; Filter out AWS/Azure/etc.
 	     (not (wse--data-center-ip-p ip)))
     (if (wse--url-p click)
 	;; Register a click if it's not going to the current blog, or
 	;; whether it's going to a media URL of some kind (image/mp4/etc).
-	(when (or (not (member (wse--host click) wse-blogs))
+	(when (or (not (member (wse--host click)
+			       (append wse-blog-aliases wse-blogs)))
 		  (string-match "/wp-contents/uploads/" click)
 		  (wse--media-p click))
 	  (wse-exec
@@ -1293,7 +1297,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	"Twitter")
        ((equal (wse--get-domain (wse--host url)) "facebook.com")
 	"Facebook")
-       ((and summarize (member (wse--host url) wse-blogs))
+       ((and summarize (member (wse--host url)
+			       (append wse-blog-aliases wse-blogs)))
 	"Interblog")
        ((string-match-p "\\bstatics.teams.cdn.office.net/\\'" url)
 	"Microsoft Teams")
