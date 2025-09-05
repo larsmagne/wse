@@ -848,15 +848,18 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(results nil))
     (cl-loop for (count title url) in data
 	     for page = (wse--clean-url url)
+	     for local = (url-filename (url-generic-parse-url page))
 	     do
 	     (cond
-	      ((string= (url-filename (url-generic-parse-url page)) "/")
+	      ((string= local "/")
 	       (setq page "/"
 		     title "Home Page"))
-	      ((string-match-p "\\`/\\(page/[0-9+]/\\)?[?]s="
-			       (url-filename (url-generic-parse-url page)))
+	      ((string-match-p "\\`/\\(page/[0-9+]/\\)?[?]s=" local)
 	       (setq page "/s"
-		     title "Search")))
+		     title "Search"))
+	      ;; All Wordpress URLs should end with a slash.
+	      ((not (string-match-p "/\\'" local))
+	       (setq page (concat page "/"))))
 	     (cl-pushnew url (gethash page urls nil) :test #'equal)
 	     (cl-incf (gethash page counts 0) count)
 	     (setf (gethash page titles) title))
