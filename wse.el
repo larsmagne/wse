@@ -1260,6 +1260,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
     "Mojeek"
     "Lilo"
     "PCH"
+    "Marginalia"
+    ("marginalia-search" "Marginalia")
     ("brave" "Brave" "search.brave.com")
     ("yahoo" "Yahoo" "search.yahoo.com")
     ("aol" "AOL" "search.aol.com")))
