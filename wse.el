@@ -337,7 +337,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		  (wse--media-p click))
 	  (wse-exec
 	   "insert into clicks(blog, time, click, domain, page) values(?, ?, ?, ?, ?)"
-	   blog time click (wse--host click) page))
+	   blog time click (wse--get-domain (wse--host click)) page))
       ;; Insert into views.
       (wse-exec
        "insert into views(blog, date, time, page, ip, user_agent, title, country, referrer, unique_page) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
