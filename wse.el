@@ -337,7 +337,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		  (wse--media-p click))
 	  (wse-exec
 	   "insert into clicks(blog, time, click, domain, page) values(?, ?, ?, ?, ?)"
-	   blog time click (wse--get-domain (wse--host click)) page))
+	   blog time click
+	   ;; Except for inter-blog clicks, get the top domain.
+	   (let ((host (wse--host click)))
+	     (if (member host wse-blogs)
+		 host
+	       (wse--get-domain host)))
+	   page))
       ;; Insert into views.
       (wse-exec
        "insert into views(blog, date, time, page, ip, user_agent, title, country, referrer, unique_page) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
