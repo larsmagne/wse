@@ -1497,7 +1497,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
        (cond
 	((equal (vtable-column vtable column) "Time")
 	 (substring (elt elem 1) 11))
-	((equal (vtable-column vtable column) "Page")
+	((member (vtable-column vtable column) '("Page" "Referrer"))
 	 (wse--possibly-buttonize (elt elem column)))
 	(t
 	 (elt elem column))))
