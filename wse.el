@@ -1498,9 +1498,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	((equal (vtable-column vtable column) "Time")
 	 (substring (elt elem 1) 11))
 	((equal (vtable-column vtable column) "Page")
-	 (buttonize (wse--adjust-title (elt elem 2)
-				       (elt elem column))
-		    #'wse--browse (elt elem column) (elt elem column)))
+	 (wse--possibly-buttonize (elt elem column)))
 	(t
 	 (elt elem column))))
      :keymap wse-mode-map)))
