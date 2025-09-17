@@ -1483,16 +1483,26 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (setq truncate-lines t)
     (make-vtable
      :face 'wse
-     :columns '("Blog" "Time" "Page" "IP" "User-Agent" "Title" "Country" "Referrer")
-     :objects (wse-sel "select blog, time, page, ip, user_agent, title, country, referrer from views where time > ? order by time desc"
+     :columns '((:name "Blog" :max-width 15)
+		"Time"
+		(:name "Page" :max-width 30)
+		(:name "IP" :max-width 20)
+		"Country"
+		(:name "Referrer" :max-width 20)
+		"User-Agent" )
+     :objects (wse-sel "select blog, time, page, ip, country, referrer, user_agent from views where time > ? order by time desc"
 		       (wse--24h))
      :getter
      (lambda (elem column vtable)
-       (if (equal (vtable-column vtable column) "Page")
-	   (buttonize (wse--adjust-title (elt elem 2)
-					 (elt elem column))
-		      #'wse--browse (elt elem column) (elt elem column))
-	 (elt elem column)))
+       (cond
+	((equal (vtable-column vtable column) "Time")
+	 (substring (elt elem 1) 11))
+	((equal (vtable-column vtable column) "Page")
+	 (buttonize (wse--adjust-title (elt elem 2)
+				       (elt elem column))
+		    #'wse--browse (elt elem column) (elt elem column)))
+	(t
+	 (elt elem column))))
      :keymap wse-mode-map)))
 
 (defun wse-make-pingback (&optional prompt-for-url)
