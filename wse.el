@@ -496,6 +496,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   "u" #'wse-view-user-agents
   "v" #'wse-view-details
   "p" #'wse-make-pingback
+  "l" #'wse-list-views
   "t" #'wse-view-top-pages)
 
 (define-derived-mode wse-mode special-mode "WSE"
@@ -1463,6 +1464,28 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :face 'wse
      :columns '("Count" "Page")
      :objects (wse-sel "select count(unique_page), unique_page, title from views group by unique_page order by count(unique_page) desc, id limit 100")
+     :getter
+     (lambda (elem column vtable)
+       (if (equal (vtable-column vtable column) "Page")
+	   (buttonize (wse--adjust-title (elt elem 2)
+					 (elt elem column))
+		      #'wse--browse (elt elem column) (elt elem column))
+	 (elt elem column)))
+     :keymap wse-mode-map)))
+
+(defun wse-list-views ()
+  "List today's views."
+  (interactive)
+  (switch-to-buffer "*WSE Views*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (make-vtable
+     :face 'wse
+     :columns '("Blog" "Time" "Page" "IP" "User-Agent" "Title" "Country" "Referrer")
+     :objects (wse-sel "select blog, time, page, ip, user_agent, title, country, referrer from views where time > ? order by time desc"
+		       (wse--24h))
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Page")
