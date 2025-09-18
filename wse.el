@@ -1592,6 +1592,26 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   do (setq int (+ (ash int 8) bit))
 	   finally (return int)))
 
+(defun wse--read-apache ()
+  "Read an Apache log line and return the data."
+  (unless (eobp)
+    (let ((bits (split-string (buffer-substring (pos-bol) (pos-eol))
+			      "[][ \t\"]+")))
+      (forward-line 1)	
+      (list :ip (nth 0 bits)
+	    :date (concat (nth 3 bits) " " (nth 4 bits))
+	    :verb (nth 5 bits)
+	    :page (nth 6 bits)
+	    :status (string-to-number (nth 8 bits))
+	    :length (string-to-number (nth 9 bits))
+	    :referrer (nth 10 bits)
+	    :user-agent (if (not (length> bits 11))
+			    ""
+			  (string-join
+			   (seq-subseq bits 11 (1- (length bits)))
+			   " "))
+	    :host (car (last bits))))))
+
 (provide 'wse)
 
 ;;; wse.el ends here
