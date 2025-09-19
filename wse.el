@@ -187,46 +187,48 @@ I.e., \"google.com\" or \"google.co.uk\"."
 ;; Update data.
 
 (defun wse--poll-blogs (&optional callback)
-  (let ((blogs wse-blogs)
-	(data nil)
-	func)
-    (setq func
-	  (lambda ()
-	    (let* ((blog (pop blogs))
-		   (ids (or (car
-			     (wse-sel "select last_id, last_comment_id from blogs where blog = ?"
-				      blog))
-			    '(0 0)))
-		   (url-request-method "POST")
-		   (url-request-extra-headers
-		    '(("Content-Type" . "application/x-www-form-urlencoded")
-		      ("Charset" . "UTF-8")))
-		   (url-request-data
-		    (mm-url-encode-www-form-urlencoded
-		     `(("from_id" . ,(format "%d" (car ids)))
-		       ("from_comment_id" . ,(format "%d" (or (cadr ids) 0)))
-		       ("password" . ,(auth-info-password
-				       (car
-					(auth-source-search
-					 :max 1
-					 :user "wse"
-					 :host blog
-					 :require '(:user :secret)
-					 :create t))))))))
-	      (url-retrieve
-	       (format "https://%s/wp-content/plugins/wse/data.php" blog)
-	       (lambda (status)
-		 (goto-char (point-min))
-		 (unwind-protect
-		     (and (search-forward "\n\n" nil t)
-			  (not (plist-get status :error))
-			  (push (cons blog (json-parse-buffer)) data))
-		   (kill-buffer (current-buffer))
-		   (if blogs
-		       (funcall func)
-		     (wse--update-data data callback))))
-	       nil t))))
-    (funcall func)))      
+  (let ((dones 0))
+    (dolist (blog wse-blogs)
+      (let* ((ids (or (car
+		       (wse-sel "select last_id, last_comment_id from blogs where blog = ?"
+				blog))
+		      '(0 0)))
+	     (url-request-method "POST")
+	     (url-request-extra-headers
+	      '(("Content-Type" . "application/x-www-form-urlencoded")
+		("Charset" . "UTF-8")))
+	     (url-request-data
+	      (mm-url-encode-www-form-urlencoded
+	       `(("from_id" . ,(format "%d" (car ids)))
+		 ("from_comment_id" . ,(format "%d" (or (cadr ids) 0)))
+		 ("password" . ,(auth-info-password
+				 (car
+				  (auth-source-search
+				   :max 1
+				   :user "wse"
+				   :host blog
+				   :require '(:user :secret)
+				   :create t))))))))
+	(url-retrieve
+	 (format "https://%s/wp-content/plugins/wse/data.php" blog)
+	 (lambda (status)
+	   (goto-char (point-min))
+	   (unwind-protect
+	       (and (search-forward "\n\n" nil t)
+		    (not (plist-get status :error))
+		    (wse--update-data blog (json-parse-buffer)))
+	     (kill-buffer (current-buffer))
+	     (cl-incf dones)
+	     ;; After fetching all the data, do additional
+	     ;; book-keeping and finally the buffer refresh.
+	     (when (= dones (length wse-blogs))
+	       (wse--fill-browser)
+	       (unless wse--filling-country
+		 (wse--fill-country))
+	       (wse--possibly-summarize-history)
+	       (when callback
+		 (funcall callback)))))
+	 nil t)))))
 
 (defvar wse--rate-limit-table (make-hash-table :test #'equal))
 
@@ -247,41 +249,33 @@ I.e., \"google.com\" or \"google.co.uk\"."
       (setf (gethash (list is-click ip url) wse--rate-limit-table) time)
       nil))))
 
-(defun wse--update-data (data &optional callback)
-  (cl-loop for (blog . elems) in data
-	   do (cl-loop for elem across (gethash "data" elems)
-		       for (id time click page referrer ip user-agent title) =
-		       (cl-coerce elem 'list)
-		       when (and (not (zerop (length click)))
-				 (not (wse--url-p click)))
-		       ;; Expand relative URLs.
-		       do (setq click (shr-expand-url click page))
-		       when (not (stringp user-agent))
-		       do (setq user-agent "")
-		       ;; If we're running two updates at
-		       ;; the same time, ignore second update.
-		       when (> (string-to-number id)
-			       (or (caar
-				    (wse-sel
-				     "select last_id from blogs where blog = ?"
-				     blog))
-				   -1))
-		       do
-		       (when (and (not (wse--bot-p user-agent))
-				  (not (wse--rate-limit
-					time ip click page)))
-			 (wse--insert-data blog time
-					   click page referrer ip
-					   user-agent title))
-		       (wse--update-id blog id))
-	   do (wse--store-comments blog (gethash "comments" elems)))
-
-  (wse--fill-browser)
-  (unless wse--filling-country
-    (wse--fill-country))
-  (wse--possibly-summarize-history)
-  (when callback
-    (funcall callback)))
+(defun wse--update-data (blog elems)
+  (cl-loop for elem across (gethash "data" elems)
+	   for (id time click page referrer ip user-agent title) =
+	   (cl-coerce elem 'list)
+	   when (and (not (zerop (length click)))
+		     (not (wse--url-p click)))
+	   ;; Expand relative URLs.
+	   do (setq click (shr-expand-url click page))
+	   when (not (stringp user-agent))
+	   do (setq user-agent "")
+	   ;; If we're running two updates at
+	   ;; the same time, ignore second update.
+	   when (> (string-to-number id)
+		   (or (caar
+			(wse-sel
+			 "select last_id from blogs where blog = ?"
+			 blog))
+		       -1))
+	   do
+	   (when (and (not (wse--bot-p user-agent))
+		      (not (wse--rate-limit
+			    time ip click page)))
+	     (wse--insert-data blog time
+			       click page referrer ip
+			       user-agent title))
+	   (wse--update-id blog id))
+  (wse--store-comments blog (gethash "comments" elems)))
 
 (defun wse--update-id (blog id)
   (if (wse-sel "select last_id from blogs where blog = ?" blog)
