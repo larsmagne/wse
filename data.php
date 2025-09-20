@@ -54,6 +54,8 @@ $comment_table = $wpdb->prefix . 'comments';
 $cutoff = date("Y-m-d H:i:s", time() - 7*24*60*60);
 $select = "select comment_id, comment_post_id, comment_author, comment_author_email, comment_author_url, comment_date_gmt, comment_content, comment_approved from $comment_table where ";
 
+// If we have an explicit comment it, then output comments newer than
+// that.  If not, output comments from the previous week.
 if ($from_comment_id) {
   $sql = $wpdb->prepare("$select comment_id > %s order by comment_id",
                         $from_comment_id);
