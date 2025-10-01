@@ -334,9 +334,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   blog time click
 	   ;; Except for inter-blog clicks, get the top domain.
 	   (let ((host (wse--host click)))
-	     (if (member host wse-blogs)
-		 host
-	       (wse--get-domain host)))
+	     (cond ((member host wse-blogs)
+		    host)
+		   ;; mailto: link
+		   ((null host)
+		    blog)
+		   (t
+		    (wse--get-domain host))))
 	   page))
       ;; Insert into views.
       (wse-exec
@@ -1260,6 +1264,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     "Ecosia"
     "Mojeek"
     "Lilo"
+    "Vuhuv"
     "PCH"
     "Marginalia"
     ("marginalia-search" "Marginalia")
@@ -1291,7 +1296,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
       (cond
        ((string-match-p "[.]pinterest[.]com/\\'" url)
 	"Pinterest")
-       ((string-match-p "mastodon\\|mathstodon\\|masto\\b\\|fosstodon" url)
+       ((string-match-p "mastodon\\|mathstodon\\|masto\\b\\|fosstodon\\|infosec.exchange" url)
 	"Mastodon")
        ((string-match-p "[.]?bsky[.][a-z]+/\\'" url)
 	"Bluesky")
