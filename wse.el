@@ -406,6 +406,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 					 blog (concat date " 00:00:00")
 					 (concat date " 23:59:59")))))))
 
+(defvar wse-filtered-countries nil
+  "List of country codes to filter out hits from.")
+
 (defun wse--fill-country ()
   (setq wse--filling-country t)
   (let ((id (or (caar (wse-sel "select id from country_counter"))
@@ -434,8 +437,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			       (setq country-code (gethash "countryCode" json)
 				     country-name (gethash "country" json)))))
 			 (kill-buffer (current-buffer))
-			 (wse-exec "update views set country = ? where id = ?"
-				   country-code next)
+			 (if (member country-code wse-filtered-countries)
+			     ;; Delete hits from filtered countries.
+			     (wse-exec "delete from views where id = ?"
+				       next)
+			   (wse-exec "update views set country = ? where id = ?"
+				     country-code next))
 			 (wse-exec "update country_counter set id = ?" next)
 			 (when (and country-name
 				    (not (wse-sel "select * from countries where code = ?"
