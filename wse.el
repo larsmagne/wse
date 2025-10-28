@@ -291,7 +291,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (wse-exec "create table if not exists blogs (blog text primary key, last_id integer, last_comment_id integer)")
 
     ;; Statistics.
-    (wse-exec "create table if not exists views (id integer primary key autoincrement, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text, referrer text, browser text, os text, type text, unique_page text)")
+    (wse-exec "create table if not exists views (id integer primary key autoincrement, blog text, date date, time datetime, page text, ip text, user_agent text, title text, country text, referrer text, browser text, os text, type text, unique_page text, isp text, as_number text)")
     (wse-exec "create table if not exists referrers (id integer primary key, blog text, time datetime, referrer text, page text)")
     (wse-exec "create table if not exists clicks (id integer primary key, blog text, time datetime, click text, domain text, page text)")
 
@@ -428,19 +428,23 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		   (goto-char (point-min))
 		   (unwind-protect
 		       (let ((country-code "-")
-			     (country-name nil))
+			     (country-name nil)
+			     json)
 			 (when (and (not (plist-get status :error))
 				    (search-forward "\n\n" nil t))
-			   (let ((json (json-parse-buffer)))
-			     (when (equal (gethash "status" json) "success")
-			       (setq country-code (gethash "countryCode" json)
-				     country-name (gethash "country" json)))))
+			   (setq json (json-parse-buffer))
+			   (when (equal (gethash "status" json) "success")
+			     (setq country-code (gethash "countryCode" json)
+				   country-name (gethash "country" json))))
 			 (kill-buffer (current-buffer))
 			 (if (member country-code wse-filtered-countries)
 			     ;; Delete hits from filtered countries.
 			     (wse-exec "delete from views where id = ?" next)
-			   (wse-exec "update views set country = ? where id = ?"
-				     country-code next))
+			   (wse-exec "update views set country = ?, isp = ?, as_number = ? where id = ?"
+				     country-code
+				     (if json (gethash "isp" json) "-")
+				     (if json (gethash "as" json) "-")
+				     next))
 			 (wse-exec "update country_counter set id = ?" next)
 			 ;; Store all country codes in a table.
 			 (when (and country-name
@@ -1493,14 +1497,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (make-vtable
      :face 'wse
      :columns '((:name "Blog" :max-width 15)
-		"ID"
 		"Time"
 		(:name "Page" :max-width 30)
 		(:name "IP" :max-width 20)
 		"Country"
+		(:name "ISP" :max-width 15)
 		(:name "Referrer" :max-width 20)
 		"User-Agent" )
-     :objects (wse-sel "select blog, id, time, page, ip, country, referrer, user_agent from views where time > ? order by id desc"
+     :objects (wse-sel "select blog, time, page, ip, country, isp, referrer, user_agent from views where time > ? order by id desc"
 		       (wse--24h))
      :getter
      (lambda (elem column vtable)
@@ -1509,6 +1513,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (substring (wse--local-time (elt elem column)) 11))
 	((member (vtable-column vtable column) '("Page" "Referrer"))
 	 (wse--possibly-buttonize (elt elem column)))
+	((equal (vtable-column vtable column) "ISP")
+	 (or (elt elem column) ""))
 	(t
 	 (elt elem column))))
      :keymap wse-mode-map)))
