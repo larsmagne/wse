@@ -1276,6 +1276,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     "PCH"
     "Marginalia"
     "Sogou"
+    "Panda-Search"
     ("marginalia-search" "Marginalia")
     ("brave" "Brave" "search.brave.com")
     ("yahoo" "Yahoo" "search.yahoo.com")
