@@ -459,10 +459,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (cl-loop for (id user-agent) in (wse-sel "select id, user_agent from views where type is null order by id")
 	   for data =
 	   (with-temp-buffer
-	     (call-process (wse--file "detect-browser.pl") nil t nil
-			   (if (zerop (length user-agent))
-			       "Mozilla"
-			     user-agent))
+	     (with-existing-directory
+	       (call-process (wse--file "detect-browser.pl") nil t nil
+			     (if (zerop (length user-agent))
+				 "Mozilla"
+			       user-agent)))
 	     (goto-char (point-min))
 	     (json-parse-buffer :null-object nil))
 	   do (wse-exec "update views set browser = ?, os = ?, type = ? where id = ?"
