@@ -1083,6 +1083,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				   (string-match-p
 				    (format-time-string "/uploads/%Y/%m/")
 				    url)
+				   ;; Also the previous month the few
+				   ;; next days of the next month.
 				   (string-match-p
 				    (format-time-string
 				     "/uploads/%Y/%m/"
