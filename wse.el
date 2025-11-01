@@ -1079,9 +1079,15 @@ I.e., \"google.com\" or \"google.co.uk\"."
 				    (wse--24h))
 			when (and (and (wse--media-p url)
 				       (not (string-match "[.]mp4\\'" url)))
-				  (string-match-p
-				   (format-time-string "/uploads/%Y/%m/")
-				   url)
+				  (or
+				   (string-match-p
+				    (format-time-string "/uploads/%Y/%m/")
+				    url)
+				   (string-match-p
+				    (format-time-string
+				     "/uploads/%Y/%m/"
+				     (- (float-time) (* 60 60 24 3)))
+				    url))
 				  (not (gethash url wse--shown-media)))
 			collect url)))
     (unless urls
@@ -1266,6 +1272,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   '("Bing"
     "Google"
     "Baidu"
+    "Swisscows"
     "Presearch"
     "Yahoo"
     "DuckDuckGo"
