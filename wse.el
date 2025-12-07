@@ -425,6 +425,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			 (caar (wse-sel "select ip from views where id = ?"
 					next)))
 		 (lambda (status)
+		   (url-store-in-cache)
 		   (goto-char (point-min))
 		   (unwind-protect
 		       (let ((country-code "-")
