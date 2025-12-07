@@ -87,7 +87,7 @@ This can be useful if you want to ignore your own host.")
      (string-match-p "bot/\\|spider\\b\\|crawl" user-agent))
    (let ((case-fold-search nil))
      (string-match-p
-      "Bot\\|meta-externalagent\\|HeadlessChrome\\|Google-Read-Aloud"
+      "Bot\\|meta-externalagent\\|HeadlessChrome\\|Google-Read-Aloud\\|GoogleOther"
       user-agent))))
 
 (defun wse--host (url)
