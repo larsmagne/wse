@@ -1493,8 +1493,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	      in (wse-sel "select count(unique_page), unique_page from views where date >= ? and date < ? group by unique_page order by count(unique_page) desc, id limit 120"
 			  (format "%04d-01-01" year)
 			  (format "%04d-01-01" (1+ year)))
+	      for filename = (url-filename (url-generic-parse-url url))
 	      ;; Filter out the main blog URLs.
-	      unless (equal (url-filename (url-generic-parse-url url)) "/")
+	      when (and (not (equal filename "/"))
+			(not (string-match-p "/category/" filename))
+			(not (equal "/about/" filename)))
 	      collect (list count url))
      :getter
      (lambda (elem column vtable)
@@ -1532,6 +1535,41 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	       url)
      :getter #'wse--details-get
      :keymap wse-mode-map)))
+
+(defun wse-top-html ()
+  "Create HTML of the ten top entries."
+  (interactive)
+  (let ((data nil))
+    (save-excursion
+      (goto-char (point-min))
+      (while (and (length< data 10)
+		  (not (eobp)))
+	(push (cadr (vtable-current-object)) data)
+	(forward-line 1)))
+    (setq data (nreverse data))
+    (pop-to-buffer "*top html*")
+    (erase-buffer)
+    (insert "<ol>\n")
+    (dolist (url data)
+      (insert (format "<li style='clear: both;'><a href=%S>%s</a>\n"
+		      url
+		      (caar (wse-sel "select title from views where unique_page = ? order by id desc limit 1" url))))
+      (insert (format "<a href=%S><img src=%S style='float: left; width: 400px'>\n"
+		      url
+		      (let ((dom (wse--url-dom url)))
+			(dom-attr (dom-by-tag (dom-by-tag dom 'article) 'img)
+				  'src))))
+      (insert "\n\n\n"))
+    (insert "</ol>")))
+
+(defun wse--url-dom (url)
+  (with-current-buffer (url-retrieve-synchronously url)
+    (url-store-in-cache)
+    (goto-char (point-min))
+    (re-search-forward "\n\n")
+    (prog1
+	(libxml-parse-html-region (point) (point-max))
+      (kill-buffer (current-buffer)))))
 
 (defun wse-list-views ()
   "List today's views."
