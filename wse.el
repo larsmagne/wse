@@ -1523,13 +1523,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (make-vtable
      :face 'wse
      :columns '((:name "Time")
-		(:name "Page" :max-width 40)
 		(:name "Referrer" :max-width 40)
 		(:name "IP" :max-width 20)
 		(:name "Country")
 		(:name "User-Agent"))
      :objects (wse-sel
-	       "select time, page, referrer, ip, country, user_agent from views where date >= ? and date < ? and unique_page = ? order by time"
+	       "select time, referrer, ip, country, user_agent from views where date >= ? and date < ? and unique_page = ? order by time"
 	       (format "%04d-01-01" year)
 	       (format "%04d-01-01" (1+ year))
 	       url)
@@ -1551,14 +1550,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (erase-buffer)
     (insert "<ol>\n")
     (dolist (url data)
-      (insert (format "<li style='clear: both;'><a href=%S>%s</a>\n"
-		      url
-		      (caar (wse-sel "select title from views where unique_page = ? order by id desc limit 1" url))))
-      (insert (format "<a href=%S><img src=%S style='float: left; width: 400px'>\n"
+      (insert (format "<p><a href=%S><img src=%S style='width: 400px'>\n"
 		      url
 		      (let ((dom (wse--url-dom url)))
 			(dom-attr (dom-by-tag (dom-by-tag dom 'article) 'img)
 				  'src))))
+      (insert (format "<li'><a href=%S>%s</a>\n"
+		      url
+		      (caar (wse-sel "select title from views where unique_page = ? order by id desc limit 1" url))))
       (insert "\n\n\n"))
     (insert "</ol>")))
 
