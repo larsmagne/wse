@@ -1291,6 +1291,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     "Marginalia"
     "Sogou"
     "Panda-Search"
+    "Seekly"
     ("marginalia-search" "Marginalia")
     ("brave" "Brave" "search.brave.com")
     ("yahoo" "Yahoo" "search.yahoo.com")
@@ -1475,9 +1476,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   do (wse-exec "update views set unique_page = ? where id = ?"
 			(wse--clean-url page) id )))
 
-(defun wse-view-top-pages ()
-  "View the 100 most popular pages."
-  (interactive)
+(defun wse-view-top-pages (year)
+  "View the 100 most popular pages in YEAR."
+  (interactive "nYear: ")
   (switch-to-buffer "*WSE Top*")
   (let ((inhibit-read-only t))
     (erase-buffer)
@@ -1486,14 +1487,50 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (make-vtable
      :face 'wse
      :columns '("Count" "Page")
-     :objects (wse-sel "select count(unique_page), unique_page, title from views group by unique_page order by count(unique_page) desc, id limit 100")
+     :objects
+     (cl-loop repeat 100
+	      for (count url)
+	      in (wse-sel "select count(unique_page), unique_page from views where date >= ? and date < ? group by unique_page order by count(unique_page) desc, id limit 120"
+			  (format "%04d-01-01" year)
+			  (format "%04d-01-01" (1+ year)))
+	      ;; Filter out the main blog URLs.
+	      unless (equal (url-filename (url-generic-parse-url url)) "/")
+	      collect (list count url))
      :getter
      (lambda (elem column vtable)
        (if (equal (vtable-column vtable column) "Page")
-	   (buttonize (wse--adjust-title (elt elem 2)
-					 (elt elem column))
-		      #'wse--browse (elt elem column) (elt elem column))
+	   (let ((url (elt elem column)))
+	     (wse--add-details
+	      #'wse--view-top-details (list url 2025)
+	      (buttonize
+	       (wse--adjust-title
+		;; Get the newest title and use that.
+		(caar (wse-sel "select title from views where unique_page = ? order by id desc limit 1" url))
+		url)
+	       #'wse--browse url url)))
 	 (elt elem column)))
+     :keymap wse-mode-map)))
+
+(defun wse--view-top-details (url year)
+  (switch-to-buffer "*WSE Details*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (make-vtable
+     :face 'wse
+     :columns '((:name "Time")
+		(:name "Page" :max-width 40)
+		(:name "Referrer" :max-width 40)
+		(:name "IP" :max-width 20)
+		(:name "Country")
+		(:name "User-Agent"))
+     :objects (wse-sel
+	       "select time, page, referrer, ip, country, user_agent from views where date >= ? and date < ? and unique_page = ? order by time"
+	       (format "%04d-01-01" year)
+	       (format "%04d-01-01" (1+ year))
+	       url)
+     :getter #'wse--details-get
      :keymap wse-mode-map)))
 
 (defun wse-list-views ()
