@@ -223,8 +223,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	     ;; book-keeping and finally the buffer refresh.
 	     (when (= dones (length wse-blogs))
 	       (wse--fill-browser)
-	       (unless wse--filling-country
-		 (wse--fill-country))
+	       (wse--possibly-fill-country)
 	       (wse--possibly-summarize-history)
 	       (when callback
 		 (funcall callback)))))
@@ -409,12 +408,20 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defvar wse-filtered-countries nil
   "List of country codes to filter out hits from.")
 
+(defun wse--possibly-fill-country ()
+  (when (or (not wse--filling-country)
+	    ;; If we haven't had an update in a minute, then filling
+	    ;; has had a serious hickup, and we restart.
+	    (> (- (float-time) wse--filling-country) 60))
+    (wse--fill-country)
+    (setq wse--filling-country nil)))
+
 (defun wse--fill-country ()
-  (setq wse--filling-country t)
   (let ((id 0)
 	func)
     (setq func
 	  (lambda ()
+	    (setq wse--filling-country (float-time))
 	    (let ((next
 		   (caar (wse-sel "select min(id) from views where id > ? and country = ''"
 				  id))))
