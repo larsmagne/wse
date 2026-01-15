@@ -1010,6 +1010,16 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	    clicks))
     (nreverse (sort clicks #'car-less-than-car))))
 
+(defun wse--sort-clicks (clicks)
+  ;; Sort clicks by how recent the page that has the click is.
+  (sort clicks
+	(lambda (c1 c2)
+	  (string> (wse--sort-click-date c1) (wse--sort-click-date c2)))))
+
+(defun wse--sort-click-date (click)
+  (when-let ((page (nth 4 click)))
+    (url-filename (url-generic-parse-url page))))
+
 (defun wse--get-click-table-data ()
   (let* ((time (wse--24h))
 	 (referrers
@@ -1019,11 +1029,12 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   t))
 	 (clicks
 	  (wse--add-media-clicks
-	   (apply
-	    #'wse-sel
-	    (format "select count(domain), domain, count(distinct click), click from clicks where time > ? and domain not in (%s) group by domain order by count(domain) desc limit ?"
-		    (wse--in wse-blogs))
-	    `(,time ,@wse-blogs ,wse-entries)))))
+	   (wse--sort-clicks
+	    (apply
+	     #'wse-sel
+	     (format "select count(domain), domain, count(distinct click), click, page from clicks where time > ? and domain not in (%s) group by domain order by count(domain) desc"
+		     (wse--in wse-blogs))
+	     `(,time ,@wse-blogs))))))
     (nconc
      (cl-loop for i from 0 upto (1- wse-entries)
 	      for click = (elt clicks i)
