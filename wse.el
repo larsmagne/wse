@@ -591,7 +591,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(:name "IP" :max-width 20)
 		(:name "Referrer" :max-width 40)
 		(:name "Country")
-		(:name "ISP" :max-width 10)
+		(:name "ISP" :max-width 15)
 		(:name "User-Agent"))
      :objects (apply
 	       #'wse-sel
