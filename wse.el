@@ -591,10 +591,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(:name "IP" :max-width 20)
 		(:name "Referrer" :max-width 40)
 		(:name "Country")
+		(:name "ISP" :max-width 10)
 		(:name "User-Agent"))
      :objects (apply
 	       #'wse-sel
-	       (format "select time, page, ip, referrer, country, user_agent from views where time > ? and page in (%s) order by time"
+	       (format "select time, page, ip, referrer, country, isp, user_agent from views where time > ? and page in (%s) order by time"
 		       (wse--in urls))
 	       (or cutoff (wse--24h)) urls)
      :getter #'wse--details-get
