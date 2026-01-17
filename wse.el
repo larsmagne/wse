@@ -83,6 +83,9 @@ This can be useful if you want to ignore your own host.")
 
 (defun wse--bot-p (user-agent)
   (or
+   ;; This user agent seems to be used by a very active scraper.
+   ;; Filter it out for now.
+   (equal user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36")
    (let ((case-fold-search t))
      (string-match-p "bot/\\|spider\\b\\|crawl" user-agent))
    (let ((case-fold-search nil))
