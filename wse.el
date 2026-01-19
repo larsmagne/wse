@@ -1314,6 +1314,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
     "Sogou"
     "Panda-Search"
     "Seekly"
+    "Gabanza"
     ("marginalia-search" "Marginalia")
     ("brave" "Brave" "search.brave.com")
     ("yahoo" "Yahoo" "search.yahoo.com")
