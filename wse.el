@@ -509,7 +509,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defvar-keymap wse-mode-map
   :parent button-map
   "g" #'wse-revert
-  "c" #'wse-display-comments
+  "C" #'wse-display-comments
   "d" #'wse-view-date
   "q" #'bury-buffer
   "w" #'wse-clicks-view-todays-media
