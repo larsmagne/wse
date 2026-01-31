@@ -144,8 +144,12 @@ document.addEventListener(
       subtree: true
     });
 
-    // Record that we've loaded this page.
-    registerVisit(document.referrer);
+    // Record that we've loaded this page, but do it on a delay to filter
+    // out bots, hopefully.  This also filters out people who close
+    // the page quickly.
+    setInterval(function() {
+      registerVisit(document.referrer);
+    }, 3000);
   },
   false
 );
