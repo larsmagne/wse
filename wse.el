@@ -868,7 +868,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	(replace-regexp-in-string
 	 "/page/[0-9]+/\\'" "/"
 	 (replace-regexp-in-string
-	  "\\?fbclid.*\\|\\?from=.*utm_.*\\|\\?utm_.*\\|\\?theme.*\\|\\?replytocom.*"
+	  "\\?fbclid.*\\|\\?from=.*utm_.*\\|\\?utm_.*\\|\\?theme.*\\|\\?replytocom.*\\|\\?_bhlid.*"
 	  ""
 	  url)))))
 
