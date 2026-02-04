@@ -51,6 +51,9 @@ This can be useful if you want to ignore your own host.")
 (defvar wse-main-post-alist nil
   "Alist of blog addresses and \"main post\" post IDs.")
 
+(defvar wse-filtered-countries nil
+  "List of country codes to filter out hits from.")
+
 ;; Internal variables.
 (defvar wse--db nil)
 (defvar wse--filling-country nil)
@@ -86,6 +89,7 @@ This can be useful if you want to ignore your own host.")
    ;; This user agent seems to be used by a very active scraper.
    ;; Filter it out for now.
    (equal user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36")
+   (equal user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36")
    (let ((case-fold-search t))
      (string-match-p "bot/\\|spider\\b\\|crawl" user-agent))
    (let ((case-fold-search nil))
@@ -344,6 +348,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		   (t
 		    (wse--get-domain host))))
 	   page))
+      (thread-yield)
       ;; Insert into views.
       (wse-exec
        "insert into views(blog, date, time, page, ip, user_agent, title, country, referrer, unique_page) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -407,9 +412,6 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			  (caar (wse-sel "select count(*) from referrers where blog = ? and time between ? and ?"
 					 blog (concat date " 00:00:00")
 					 (concat date " 23:59:59")))))))
-
-(defvar wse-filtered-countries nil
-  "List of country codes to filter out hits from.")
 
 (defun wse--possibly-fill-country ()
   (when (or (not wse--filling-country)
@@ -1344,7 +1346,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
       (cond
        ((string-match-p "[.]pinterest[.]com/\\'" url)
 	"Pinterest")
-       ((string-match-p "mastodon\\|mathstodon\\|masto\\b\\|fosstodon\\|infosec.exchange\\|oslo.town" url)
+       ((string-match-p "mastodon\\|mathstodon\\|masto\\b\\|fosstodon\\|infosec.exchange\\|oslo.town\\|nerdculture.de" url)
 	"Mastodon")
        ((string-match-p "[.]?bsky[.][a-z]+/\\'" url)
 	"Bluesky")
