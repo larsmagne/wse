@@ -1737,6 +1737,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			   " "))
 	    :host (car (last bits))))))
 
+(defun wse--readable-number (number)
+  (string-join
+   (nreverse
+    (cl-loop while (> number 0)
+	     collect (format "%d" (mod number 1000))
+	     do (setq number (/ number 1000))))
+   ","))
+
 (provide 'wse)
 
 ;;; wse.el ends here
