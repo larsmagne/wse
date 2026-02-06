@@ -126,9 +126,18 @@ This can be useful if you want to ignore your own host.")
 (defun wse--time (time)
   (format-time-string "%Y-%m-%d %H:%M:%S" time "Z"))
 
+(defvar wse--override-24h nil)
+
+(defun wse-1h ()
+  "Show results from last hour."
+  (interactive)
+  (let ((wse--override-24h (wse--1h)))
+    (wse)))
+
 (defun wse--24h ()
-  (wse--time (- (time-convert (current-time) 'integer)
-		(* 60 60 24))))
+  (or wse--override-24h
+      (wse--time (- (time-convert (current-time) 'integer)
+		    (* 60 60 24)))))
 
 (defun wse--1h ()
   (wse--time (- (time-convert (current-time) 'integer)
