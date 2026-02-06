@@ -99,7 +99,7 @@ document.addEventListener(
         });
     }
 
-    var registerVisit = function(referrer) {
+    function getTitle() {
       // Get the title from the entry title, but fall back on the
       // document title.
       var title;
@@ -113,7 +113,10 @@ document.addEventListener(
         if (title)
 	  title = title.replace(/ +\u2013.*$/, "");
       }
+      return title;
+    }
 
+    function registerVisit(referrer, title) {
       postWSE({
         ref: referrer,
         page: window.location.href,
@@ -128,7 +131,7 @@ document.addEventListener(
     var oldHref = document.location.href;
     setInterval(function() {
       if (oldHref != document.location.href) {
-        registerVisit(oldHref);
+        registerVisit(oldHref, title);
         oldHref = document.location.href;
       }
     }, 1000);
@@ -144,12 +147,16 @@ document.addEventListener(
       subtree: true
     });
 
+    // We get the title immediately, because it may change if the user
+    // is running translation services.
+    var title = getTitle();
+
     // Record that we've loaded this page, but do it on a delay to filter
     // out bots, hopefully.  This also filters out people who close
     // the page quickly.
-    setInterval(function() {
-      registerVisit(document.referrer);
-    }, 3000);
+    setTimeout(function() {
+      registerVisit(document.referrer, title);
+    }, 10000);
   },
   false
 );
