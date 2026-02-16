@@ -22,25 +22,21 @@ document.addEventListener(
 	  return;
         a.setAttribute("data-wse", "true");
 
-        a.addEventListener("click", function(e) {
-          // jQuery uses e.which (1=L, 2=M, 3=R); native uses e.button (0=L,1=M,2=R).
-          var which = e.which ||
-	      (typeof e.button === "number" ? e.button + 1 : 1);
-
+	var cFunc = function(e) {
           // Only record clicks with left or middle mouse button.
-          if (which !== 1 && which !== 2)
+          if (e.button !== 0 && e.button !== 1)
 	    return true;
 
           var go = function() {
             // Middle mouse button opens new tab/window.
-            if (which === 1)
+            if (e.button === 0)
 	      window.location.href = link;
             else
 	      window.open(link, "_blank");
           };
 
           postWSE({
-            click: link,
+            click: link + "?b=" + e.button,
             page: window.location.href,
           })
             .then(go)
@@ -48,7 +44,10 @@ document.addEventListener(
 
           e.preventDefault();
           return true;
-        });
+        };
+        a.addEventListener("click", cFunc);
+        a.addEventListener("auxclick", cFunc);
+
       });
 
       // Instrument <video> elements.
