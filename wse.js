@@ -47,7 +47,6 @@ document.addEventListener(
         };
         a.addEventListener("click", cFunc);
         a.addEventListener("auxclick", cFunc);
-
       });
 
       // Instrument <video> elements.
