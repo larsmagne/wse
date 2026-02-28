@@ -36,7 +36,7 @@ document.addEventListener(
           };
 
           postWSE({
-            click: link + "?b=" + e.button,
+            click: link,
             page: window.location.href,
           })
             .then(go)
