@@ -1014,7 +1014,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		  (wse--add-details
 		   #'wse--view-click-details (list nil images)
 		   (concat
-		    "🔽 " (buttonize "Images" #'wse--view-clicks images))))
+		    "🔽 "
+		    (if (wse--new-media-clicks)
+			"📸 "
+		      "")
+		    (buttonize "Images" #'wse--view-clicks images))))
 	    clicks))
     (when videos
       (push (list (length videos)
@@ -1105,32 +1109,36 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defvar wse--shown-media (make-hash-table :test #'equal))
 
+(defun wse--new-media-clicks ()
+  (cl-loop for (url)
+	   in (wse-sel "select distinct click from clicks where time > ?"
+		       (wse--24h))
+	   when (and (and (wse--media-p url)
+			  (not (string-match "[.]mp4\\'" url)))
+		     (or
+		      (string-match-p
+		       (format-time-string "/uploads/%Y/%m/")
+		       url)
+		      ;; Also the previous month the few
+		      ;; next days of the next month.
+		      (string-match-p
+		       (format-time-string
+			"/uploads/%Y/%m/"
+			(- (float-time) (* 60 60 24 3)))
+		       url))
+		     (not (gethash url wse--shown-media)))
+	   collect url))
+
 (defun wse-clicks-view-todays-media ()
   "View today's media clicks."
   (interactive nil wse-clicks-mode wse-mode)
-  (let* ((urls (cl-loop for (url)
-			in (wse-sel "select distinct click from clicks where time > ?"
-				    (wse--24h))
-			when (and (and (wse--media-p url)
-				       (not (string-match "[.]mp4\\'" url)))
-				  (or
-				   (string-match-p
-				    (format-time-string "/uploads/%Y/%m/")
-				    url)
-				   ;; Also the previous month the few
-				   ;; next days of the next month.
-				   (string-match-p
-				    (format-time-string
-				     "/uploads/%Y/%m/"
-				     (- (float-time) (* 60 60 24 3)))
-				    url))
-				  (not (gethash url wse--shown-media)))
-			collect url)))
+  (let ((urls (wse--new-media-clicks)))
     (unless urls
       (error "No new unseen media clicks"))
     (dolist (url urls)
       (setf (gethash url wse--shown-media) t))
-    (open-webs urls)))
+    (open-webs urls)
+    (wse)))
 
 (defun wse--view-clicks (domains)
   (unless (listp domains)
