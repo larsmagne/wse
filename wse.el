@@ -762,9 +762,13 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (wse--plot-blogs-today)
     (goto-char (point-min))))
 
+(defvar-keymap wse-comment-map
+  :parent wse-mode-map
+  "s" #'wse-comment-set-status)
+
 (defun wse--render-comments (&optional display-spam)
   (when-let (comments (wse-sel
-		       (format "select time, blog, status, author, content, post_id from comments where time > ? %s order by time desc"
+		       (format "select time, blog, status, author, content, post_id, id from comments where time > ? %s order by time desc"
 			       (if display-spam
 				   ""
 				 "and status <> 'spam'"))
@@ -815,7 +819,36 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		       #'wse--browse url url)))
 	 (t
 	  (elt elem column)))))
-     :keymap wse-mode-map)))
+     :keymap wse-comment-map)))
+
+(defun wse-comment-set-status (comment)
+  "Set the status of the comment under point."
+  (interactive (list (vtable-current-object)))
+  (unless comment
+    (user-error "No comment on the current line"))
+  (let* ((statuses '(("approve" "1")
+		     ("hold" "0")
+		     ("trash" "trash")
+		     ("spam" "spam")))
+	 (new-status (completing-read "Set status to: " statuses))
+	 (inhibit-read-only t))
+    (cl-destructuring-bind (_ ewp-address _ _ _ post-id comment-id) comment
+      (let ((data (cl-loop for comment in
+			   (ewp-call 'ewp-get-comments ewp-address
+				     100 nil post-id)
+			   when (equal (cdr (assoc "comment_id" comment))
+				       (format "%d" comment-id))
+			   return comment)))
+	(unless data
+	  (error "Couldn't find comment"))
+	(setcdr (assoc "status" data) new-status)
+	(let ((result (ewp-call 'ewp-edit-comment ewp-address
+				(format "%d" comment-id) data)))
+	  (if (not (eq result t))
+	      (message "Got an error: %s" result)
+	    (message "Updated comment successfully")
+	    (setf (nth 2 comment) (cadr (assoc new-status statuses)))
+	    (vtable-update-object (vtable-current-table) comment comment)))))))
 
 (defun wse--get-browser-table-data ()
   (let ((browsers (wse-sel "select count(browser), browser from views where time > ? group by browser order by count(browser) desc limit ?"
