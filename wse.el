@@ -765,7 +765,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defvar-keymap wse-comment-map
   :parent wse-mode-map
   "s" #'wse-comment-set-status
-  "RET" #'wse-view-comment)
+  "RET" #'wse-view-comment
+  "r" #'wse-reply-comment)
 
 (defun wse--render-comments (&optional display-spam)
   (when-let (comments (wse-sel
@@ -867,6 +868,17 @@ I.e., \"google.com\" or \"google.co.uk\"."
     (unless data
       (error "Couldn't find comment"))
     (ewp-display-comment data)))
+
+(defun wse-reply-comment (comment)
+  "Reply to the comment under point."
+  (interactive (list (vtable-current-object)))
+  (unless comment
+    (user-error "No comment on the current line"))
+  (let ((data (wse--get-comment comment)))
+    (unless data
+      (error "Couldn't find comment"))
+    (dlet ((ewp-address (nth 1 comment)))
+      (ewp-make-comment data))))
 
 (defun wse--get-browser-table-data ()
   (let ((browsers (wse-sel "select count(browser), browser from views where time > ? group by browser order by count(browser) desc limit ?"
