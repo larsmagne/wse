@@ -848,6 +848,9 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	      (message "Got an error: %s" result)
 	    (message "Updated comment successfully")
 	    (setf (nth 2 comment) (cadr (assoc new-status statuses)))
+	    (wse-exec "update comments set status = ? where id = ? and blog = ?"
+		      (cadr (assoc new-status statuses))
+		      comment-id ewp-address)
 	    (vtable-update-object (vtable-current-table) comment comment)))))))
 
 (defun wse--get-browser-table-data ()
