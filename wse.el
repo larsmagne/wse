@@ -764,7 +764,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defvar-keymap wse-comment-map
   :parent wse-mode-map
-  "s" #'wse-comment-set-status)
+  "s" #'wse-comment-set-status
+  "RET" #'wse-view-comment)
 
 (defun wse--render-comments (&optional display-spam)
   (when-let (comments (wse-sel
@@ -832,13 +833,8 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		     ("spam" "spam")))
 	 (new-status (completing-read "Set status to: " statuses))
 	 (inhibit-read-only t))
-    (cl-destructuring-bind (_ ewp-address _ _ _ post-id comment-id) comment
-      (let ((data (cl-loop for comment in
-			   (ewp-call 'ewp-get-comments ewp-address
-				     100 nil post-id)
-			   when (equal (cdr (assoc "comment_id" comment))
-				       (format "%d" comment-id))
-			   return comment)))
+    (cl-destructuring-bind (_ ewp-address _ _ _ _ comment-id) comment
+      (let ((data (wse--get-comment comment)))
 	(unless data
 	  (error "Couldn't find comment"))
 	(setcdr (assoc "status" data) new-status)
@@ -852,6 +848,25 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		      (cadr (assoc new-status statuses))
 		      (format "%s" comment-id) ewp-address)
 	    (vtable-update-object (vtable-current-table) comment comment)))))))
+
+(defun wse--get-comment (comment)
+  (cl-destructuring-bind (_ ewp-address _ _ _ post-id comment-id) comment
+    (cl-loop for comment in
+	     (ewp-call 'ewp-get-comments ewp-address
+		       100 nil post-id)
+	     when (equal (cdr (assoc "comment_id" comment))
+			 (format "%d" comment-id))
+	     return comment)))
+
+(defun wse-view-comment (comment)
+  "View the comment under point."
+  (interactive (list (vtable-current-object)))
+  (unless comment
+    (user-error "No comment on the current line"))
+  (let ((data (wse--get-comment comment)))
+    (unless data
+      (error "Couldn't find comment"))
+    (ewp-display-comment data)))
 
 (defun wse--get-browser-table-data ()
   (let ((browsers (wse-sel "select count(browser), browser from views where time > ? group by browser order by count(browser) desc limit ?"
