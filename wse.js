@@ -23,6 +23,9 @@ document.addEventListener(
         a.setAttribute("data-wse", "true");
 
 	var cFunc = function(e) {
+	  // Check that we didn't end up clicking something else.
+	  if (e.target.nodeName != "A")
+	    return true;
           // Only record clicks with left or middle mouse button.
           if (e.button !== 0 && e.button !== 1)
 	    return true;
