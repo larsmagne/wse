@@ -1702,7 +1702,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (substring (wse--local-time (elt elem column)) 11))
 	((member (vtable-column vtable column) '("Page" "Referrer"))
 	 (wse--possibly-buttonize (elt elem column)))
-	((equal (vtable-column vtable column) "ISP")
+	((member (vtable-column vtable column) '("Country" "ISP"))
 	 (or (elt elem column) ""))
 	(t
 	 (elt elem column))))
