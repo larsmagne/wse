@@ -54,6 +54,13 @@ This can be useful if you want to ignore your own host.")
 (defvar wse-filtered-countries nil
   "List of country codes to filter out hits from.")
 
+(defvar wse-ping-host "1.1.1.1"
+  "If non-nil, this should be a host name or IP address of a host to ping.
+If it responds, we know that network is up.
+
+This is used before getting data from the hosts when updating
+automatically.")
+
 ;; Internal variables.
 (defvar wse--db nil)
 (defvar wse--filling-country nil)
@@ -79,8 +86,10 @@ This can be useful if you want to ignore your own host.")
   (when-let ((idle (current-idle-time))
 	     (buffer (get-buffer "*Wordpress Statistics*")))
     (when (> (time-convert (time-since idle) 'integer) 20)
-      (with-current-buffer buffer
-	(wse-revert t)))))
+      (wse--probe-network
+       (lambda ()
+	 (with-current-buffer buffer
+	   (wse-revert t)))))))
 
 ;; Helper functions.
 
@@ -548,6 +557,18 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   (wse--render)
 	   (unless silent
 	     (message "Updating...done"))))))))
+
+(defun wse--probe-network (callback)
+  (if (null wse-ping-host)
+      (funcall callback)
+    (make-process
+     :name "ping"
+     :command (list "ping" "-c1" wse-ping-host)
+     :noquery t
+     :sentinel
+     (lambda (proc state)
+       (when (string-match-p "\\`finished\\b" state)
+	 (funcall callback))))))
 
 (defun wse-view-date (date)
   (interactive
