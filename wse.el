@@ -786,7 +786,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 (defvar-keymap wse-comment-map
   :parent wse-mode-map
   "s" #'wse-comment-set-status
-  "RET" #'wse-view-comment
+  "SPC" #'wse-view-comment
   "r" #'wse-reply-comment)
 
 (defun wse--render-comments (&optional display-spam)
