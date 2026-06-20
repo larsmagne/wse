@@ -566,7 +566,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
      :command (list "ping" "-c1" wse-ping-host)
      :noquery t
      :sentinel
-     (lambda (proc state)
+     (lambda (_proc state)
        (when (string-match-p "\\`finished\\b" state)
 	 (funcall callback))))))
 
@@ -954,18 +954,40 @@ I.e., \"google.com\" or \"google.co.uk\"."
       nil
     elem))
 
+(defvar wse--wordpress-query-params
+  '("p" "page_id" "attachment_id" "name" "pagename" "cat"
+    "category_name" "tag" "tag_id" "author" "author_name" "m" "year"
+    "monthnum" "day" "w" "post_type" "taxonomy" "term" "s" "feed"
+    "paged" "page" "cpage" "preview" "embed"))
+
 (defun wse--clean-url (url)
   (and url
-       (replace-regexp-in-string
-	"#.*\\'" ""
-	(replace-regexp-in-string
-	 "/page/[0-9]+/\\'" "/"
-	 ;; This really should be fixed to understand what part of ? is a
-	 ;; Wordpress thing and what is just some random junk.
-	 (replace-regexp-in-string
-	  "\\?fbclid.*\\|\\?from=.*utm_.*\\|\\?utm_.*\\|\\?theme.*\\|\\?replytocom.*\\|\\?_bhlid.*\\|\\?media_id.*\\|?ck_subscriber.*\\|?unapproved.*\\|?referrer.*\\|\\?ref=.*\\|\\??#respond\\|?wmcAction=.*\\|?__read.*"
-	  ""
-	  url)))))
+       (let* ((purl (url-generic-parse-url
+		     (replace-regexp-in-string
+		      "#.*\\'" ""
+		      (replace-regexp-in-string
+		       "/page/[0-9]+/\\'" "/" url))))
+	      (bits
+	       (split-string (url-filename purl) "?"))
+	      (params
+	       (and (cadr bits)
+		    ;; Filter out any ?fbclid= (etc.) parameters from
+		    ;; the query string to get to the real URL.
+		    (cl-loop for (key val)
+			     in (url-parse-query-string (cadr bits))
+			     when (member key wse--wordpress-query-params)
+			     collect (list key val)))))
+	 (setf
+	  (url-filename purl)
+	  (concat (car bits)
+		  (if params
+		      (concat "?" (mapconcat
+				   (lambda (elem)
+				     (concat (car elem) "=" (cadr elem)))
+				   params
+				   "&"))
+		    "")))
+	 (url-recreate-url purl))))
 
 (defun wse--transform-pages (data cutoff)
   (let ((counts (make-hash-table :test #'equal))
