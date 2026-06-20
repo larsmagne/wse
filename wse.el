@@ -960,8 +960,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	"#.*\\'" ""
 	(replace-regexp-in-string
 	 "/page/[0-9]+/\\'" "/"
+	 ;; This really should be fixed to understand what part of ? is a
+	 ;; Wordpress thing and what is just some random junk.
 	 (replace-regexp-in-string
-	  "\\?fbclid.*\\|\\?from=.*utm_.*\\|\\?utm_.*\\|\\?theme.*\\|\\?replytocom.*\\|\\?_bhlid.*\\|\\?media_id.*\\|?ck_subscriber.*\\|?unapproved.*\\|?referrer.*\\|\\?ref=.*\\|\\??#respond"
+	  "\\?fbclid.*\\|\\?from=.*utm_.*\\|\\?utm_.*\\|\\?theme.*\\|\\?replytocom.*\\|\\?_bhlid.*\\|\\?media_id.*\\|?ck_subscriber.*\\|?unapproved.*\\|?referrer.*\\|\\?ref=.*\\|\\??#respond\\|?wmcAction=.*\\|?__read.*"
 	  ""
 	  url)))))
 
