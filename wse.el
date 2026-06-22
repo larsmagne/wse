@@ -966,7 +966,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		     (replace-regexp-in-string
 		      "#.*\\'" ""
 		      (replace-regexp-in-string
-		       "/page/[0-9]+/\\'" "/" url))))
+		       "/page/[0-9]+/.*\\'" "/" url))))
 	      (bits
 	       (split-string (url-filename purl) "?"))
 	      (params
