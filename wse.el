@@ -1664,6 +1664,28 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 (elt elem column)))
      :keymap wse-mode-map)))
 
+(defun wse-view-top-images (year)
+  "View the 100 most popular images that have been clicked in in YEAR."
+  (interactive "nYear: ")
+  (switch-to-buffer "*WSE Top*")
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (special-mode)
+    (setq truncate-lines t)
+    (make-vtable
+     :face 'wse
+     :columns '("Count" "Image")
+     :objects
+     (wse-sel "select count(click), click from clicks where time >= ? and time < ? and (click like '%.jpg' or click like '%.jpeg') group by click order by count(click) desc limit 120"
+	      (format "%04d-01-01 00:00:00" year)
+	      (format "%04d-01-01 00:00:00" (1+ year)))
+     :getter
+     (lambda (elem column vtable)
+       (if (equal (vtable-column vtable column) "Image")
+	   (buttonize (elt elem column) #'wse--browse (elt elem column))
+	 (elt elem column)))
+     :keymap wse-mode-map)))
+
 (defun wse--view-top-details (url year)
   (switch-to-buffer "*WSE Details*")
   (let ((inhibit-read-only t))
