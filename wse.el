@@ -1654,7 +1654,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
        (if (equal (vtable-column vtable column) "Page")
 	   (let ((url (elt elem column)))
 	     (wse--add-details
-	      #'wse--view-top-details (list url 2025)
+	      #'wse--view-top-details (list url year)
 	      (buttonize
 	       (wse--adjust-title
 		;; Get the newest title and use that.
