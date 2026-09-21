@@ -532,6 +532,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
   "C" #'wse-display-comments
   "d" #'wse-view-date
   "q" #'bury-buffer
+  "e" #'wse-edit-url
   "w" #'wse-clicks-view-todays-media
   "u" #'wse-view-user-agents
   "v" #'wse-view-details
@@ -569,6 +570,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
      (lambda (_proc state)
        (when (string-match-p "\\`finished\\b" state)
 	 (funcall callback))))))
+
+(defun wse-edit-url ()
+  "Edit the URL under point."
+  (interactive nil wse-mode)
+  (let ((url (get-text-property (point) 'button-data)))
+    (unless url
+      (user-error "No URL at point"))
+    (ewp-edit-url url)))
 
 (defun wse-view-date (date)
   (interactive
