@@ -1497,8 +1497,15 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--plot-blogs-today ()
   (let ((data 
-	 (wse-sel "select blog, count(blog), count(distinct ip) from views where time > ? group by blog order by blog"
+	 (wse-sel "select blog, count(blog), count(distinct ip) from views where time > ? group by blog"
 		  (wse--24h))))
+    ;; Ensure that all blogs appear even if there are absolutely no
+    ;; visitors.
+    (dolist (blog wse-blogs)
+      (unless (assoc blog data)
+	(push (list blog 0 0) data)))
+    (setq data (sort data (lambda (b1 b2)
+			    (string< (car b1) (car b2)))))
     (insert-image
      (svg-image
       (eplot-make-plot
@@ -1685,6 +1692,29 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	   (buttonize (elt elem column) #'wse--browse (elt elem column))
 	 (elt elem column)))
      :keymap wse-mode-map)))
+
+(defun wse--export-top-pages (file period)
+  "Export a JSON file of the ten most popular pages since PERIOD (in seconds)."
+  (with-temp-buffer
+    (insert
+     (json-serialize
+      (list
+       :pages
+       (cl-coerce
+	(seq-take
+	 (cl-loop repeat 100
+		  for (count url)
+		  in (wse-sel "select count(unique_page), unique_page from views where date >= ? group by unique_page order by count(unique_page) desc, id limit 120"
+			      (format-time-string "%Y-%m-%d" (- (float-time) period)))
+		  for local = (url-filename (url-generic-parse-url url))
+		  unless (string-match-p "\\`/\\'\\|/category/\\|/about/"
+					 local)
+		  collect (list :page (caar (wse-sel "select title from views where unique_page = ? order by id desc limit 1" url))
+				:count count
+				:url url))
+	 10)
+	'vector))))
+    (write-region (point-min) (point-max) file)))
 
 (defun wse--view-top-details (url year)
   (switch-to-buffer "*WSE Details*")
