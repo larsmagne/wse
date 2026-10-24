@@ -840,8 +840,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	 ((equal (vtable-column vtable column) "Author")
 	  (mm-url-decode-entities-string (elt elem column)))
 	 ((equal (vtable-column vtable column) "Link")
-	  (buttonize (elt elem column) #'wse--browse
-		     (elt elem column) (elt elem column)))
+	  (let ((url (elt elem column)))
+	    (if (length> url 0)
+		(buttonize (url-host (url-generic-parse-url url))
+			   #'wse--browse url url)
+	      "")))
 	 ((equal (vtable-column vtable column) "Comment")
 	  (let ((url (format "https://%s/?p=%d"
 			     (elt elem 1) (elt elem 6))))
