@@ -800,7 +800,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 
 (defun wse--render-comments (&optional display-spam)
   (when-let (comments (wse-sel
-		       (format "select time, blog, status, author, content, post_id, id from comments where time > ? %s order by time desc"
+		       (format "select time, blog, status, author, coalesce(url, ''), content, post_id, id from comments where time > ? %s order by time desc"
 			       (if display-spam
 				   ""
 				 "and status <> 'spam'"))
@@ -815,6 +815,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		(:name "Blog" :max-width 20)
 		(:name "Status")
 		(:name "Author" :max-width "200px")
+		(:name "Link" :max-width "200px")
 		(:name "Comment" :max-width 100))
      :objects comments
      :getter
@@ -838,9 +839,11 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	  (wse--local-time (elt elem column)))
 	 ((equal (vtable-column vtable column) "Author")
 	  (mm-url-decode-entities-string (elt elem column)))
+	 ((equal (vtable-column vtable column) "Link")
+	  (elt elem column))
 	 ((equal (vtable-column vtable column) "Comment")
 	  (let ((url (format "https://%s/?p=%d"
-			     (elt elem 1) (elt elem 5))))
+			     (elt elem 1) (elt elem 6))))
 	    (buttonize (string-replace
 			"\n" " "
 			(with-temp-buffer
