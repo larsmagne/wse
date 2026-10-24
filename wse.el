@@ -884,10 +884,14 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	    (vtable-update-object (vtable-current-table) comment comment)))))))
 
 (defun wse--get-comment (comment)
-  (cl-destructuring-bind (_ ewp-address _ _ _ _ post-id comment-id) comment
+  (cl-destructuring-bind (_ ewp-address status _ _ _ post-id comment-id) comment
     (cl-loop for comment in
 	     (ewp-call 'ewp-get-comments ewp-address
-		       100 nil post-id)
+		       100 nil post-id
+		       ;; The comment interface doesn't include spam
+		       ;; comments by default, so specify that
+		       ;; explicitly.
+		       (and (equal status "spam") "spam"))
 	     when (equal (cdr (assoc "comment_id" comment))
 			 (format "%d" comment-id))
 	     return comment)))
