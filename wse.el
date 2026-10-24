@@ -401,7 +401,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 			(gethash "comment_date_gmt" comment)
 			(gethash "comment_author" comment)
 			(gethash "comment_author_email" comment)
-			(gethash "comment_url" comment)
+			(gethash "comment_author_url" comment)
 			(gethash "comment_content" comment)
 			(gethash "comment_approved" comment))))
 
