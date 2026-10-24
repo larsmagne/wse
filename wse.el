@@ -867,7 +867,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 		     ("spam" "spam")))
 	 (new-status (completing-read "Set status to: " statuses))
 	 (inhibit-read-only t))
-    (cl-destructuring-bind (_ ewp-address _ _ _ _ comment-id) comment
+    (cl-destructuring-bind (_ ewp-address _ _ _ _ _ comment-id) comment
       (let ((data (wse--get-comment comment)))
 	(unless data
 	  (error "Couldn't find comment"))
@@ -884,7 +884,7 @@ I.e., \"google.com\" or \"google.co.uk\"."
 	    (vtable-update-object (vtable-current-table) comment comment)))))))
 
 (defun wse--get-comment (comment)
-  (cl-destructuring-bind (_ ewp-address _ _ _ post-id comment-id) comment
+  (cl-destructuring-bind (_ ewp-address _ _ _ _ post-id comment-id) comment
     (cl-loop for comment in
 	     (ewp-call 'ewp-get-comments ewp-address
 		       100 nil post-id)
