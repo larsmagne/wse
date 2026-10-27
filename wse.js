@@ -18,7 +18,11 @@ document.addEventListener(
         var link = a.getAttribute("href");
         if (!link)
 	  return;
+	// We've already done this one.
         if (a.getAttribute("data-wse"))
+	  return;
+	// Skip comment reply links.
+	if (a.classList.contains('comment-reply-link'))
 	  return;
         a.setAttribute("data-wse", "true");
 
