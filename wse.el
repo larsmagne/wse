@@ -48,6 +48,9 @@ This is useful if some sites have several names.")
   "List of IP addresses to ignore.
 This can be useful if you want to ignore your own host.")
 
+(defvar wse-referrer-blocklist nil
+  "List of regexps to match referrers to ignore traffic from.")
+
 (defvar wse-main-post-alist nil
   "Alist of blog addresses and \"main post\" post IDs.")
 
@@ -340,6 +343,10 @@ I.e., \"google.com\" or \"google.co.uk\"."
   (when (and (wse--url-p page)
 	     ;; Allow filtering out yourself.
 	     (not (member ip wse-ip-blocklist))
+	     ;; Filter out spam referrers.
+	     (not (cl-loop for match in wse-referrer-blocklist
+			   when (string-match-p match referrer)
+			   return t))
 	     ;; Somebody may be calling the tracking PHP script from a
 	     ;; third party site -- for instance Google Translate --
 	     ;; but we filter these out.
